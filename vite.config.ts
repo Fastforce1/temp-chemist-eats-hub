@@ -11,13 +11,13 @@ export default defineConfig({
     },
   },
   server: {
-    port: 3000,
+    port: 8080,
     open: true,
   },
   build: {
     outDir: 'dist',
     sourcemap: true,
-    minify: 'terser',
+    minify: 'esbuild',
     target: 'es2018',
   },
 });
