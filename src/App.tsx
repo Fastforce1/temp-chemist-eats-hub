@@ -1,5 +1,6 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate } from "react-router-dom";
+import { AnimatePresence } from "framer-motion";
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './contexts/AuthContext';
 import { ToastContainer } from 'react-toastify';
@@ -36,82 +37,86 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
 const queryClient = new QueryClient();
 
 const App: React.FC = () => {
-  return (
+  const isClient = typeof window !== 'undefined';
+
+  const content = (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <CartProvider>
-          <Router>
-            <Routes>
-              {/* Public routes */}
-              <Route path="/login" element={<Login />} />
-              <Route path="/signup" element={<div>Signup Page</div>} />
+          <Routes>
+            {/* Public routes */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<div>Signup Page</div>} />
+            
+            {/* Main Layout */}
+            <Route path="/" element={<MainLayout />}>
+              <Route index element={<Home />} />
+              <Route path="search" element={<RecipeSearch />} />
+              <Route path="recipe/:id" element={<RecipeDetail />} />
+              <Route path="contact" element={<Contact />} />
+              <Route path="saved" element={
+                <ProtectedRoute>
+                  <SavedRecipes />
+                </ProtectedRoute>
+              } />
               
-              {/* Main Layout */}
-              <Route path="/" element={<MainLayout />}>
-                <Route index element={<Home />} />
-                <Route path="search" element={<RecipeSearch />} />
-                <Route path="recipe/:id" element={<RecipeDetail />} />
-                <Route path="contact" element={<Contact />} />
-                <Route path="saved" element={
-                  <ProtectedRoute>
-                    <SavedRecipes />
-                  </ProtectedRoute>
+              {/* Dashboard Routes */}
+              <Route path="dashboard" element={
+                <ProtectedRoute>
+                  <DashboardLayout />
+                </ProtectedRoute>
+              }>
+                <Route index element={<Dashboard />} />
+                <Route path="meals" element={
+                  <React.Suspense fallback={<LoadingSpinner />}>
+                    <MealPlanner />
+                  </React.Suspense>
                 } />
-                
-                {/* Dashboard Routes */}
-                <Route path="dashboard" element={
-                  <ProtectedRoute>
-                    <DashboardLayout />
-                  </ProtectedRoute>
-                }>
-                  <Route index element={<Dashboard />} />
-                  <Route path="meals" element={
-                    <React.Suspense fallback={<LoadingSpinner />}>
-                      <MealPlanner />
-                    </React.Suspense>
-                  } />
-                  <Route path="supplements" element={
-                    <React.Suspense fallback={<LoadingSpinner />}>
-                      <Supplements />
-                    </React.Suspense>
-                  } />
-                  <Route path="progress" element={
-                    <React.Suspense fallback={<LoadingSpinner />}>
-                      <Progress />
-                    </React.Suspense>
-                  } />
-                  <Route path="log" element={
-                    <React.Suspense fallback={<LoadingSpinner />}>
-                      <DailyLog />
-                    </React.Suspense>
-                  } />
-                  <Route path="learn" element={
-                    <React.Suspense fallback={<LoadingSpinner />}>
-                      <Learn />
-                    </React.Suspense>
-                  } />
-                  <Route path="settings" element={
-                    <React.Suspense fallback={<LoadingSpinner />}>
-                      <Settings />
-                    </React.Suspense>
-                  } />
-                  <Route path="profile" element={
-                    <React.Suspense fallback={<LoadingSpinner />}>
-                      <UserProfile />
-                    </React.Suspense>
-                  } />
-                </Route>
+                <Route path="supplements" element={
+                  <React.Suspense fallback={<LoadingSpinner />}>
+                    <Supplements />
+                  </React.Suspense>
+                } />
+                <Route path="progress" element={
+                  <React.Suspense fallback={<LoadingSpinner />}>
+                    <Progress />
+                  </React.Suspense>
+                } />
+                <Route path="log" element={
+                  <React.Suspense fallback={<LoadingSpinner />}>
+                    <DailyLog />
+                  </React.Suspense>
+                } />
+                <Route path="learn" element={
+                  <React.Suspense fallback={<LoadingSpinner />}>
+                    <Learn />
+                  </React.Suspense>
+                } />
+                <Route path="settings" element={
+                  <React.Suspense fallback={<LoadingSpinner />}>
+                    <Settings />
+                  </React.Suspense>
+                } />
+                <Route path="profile" element={
+                  <React.Suspense fallback={<LoadingSpinner />}>
+                    <UserProfile />
+                  </React.Suspense>
+                } />
               </Route>
+            </Route>
 
-              {/* Catch all route */}
-              <Route path="*" element={<Navigate to="/dashboard" replace />} />
-            </Routes>
-            <ToastContainer position="bottom-right" />
-          </Router>
+            {/* Catch all route */}
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
+          {isClient && <ToastContainer position="bottom-right" />}
         </CartProvider>
       </AuthProvider>
     </QueryClientProvider>
   );
+
+  return isClient ? (
+    <AnimatePresence mode="wait">{content}</AnimatePresence>
+  ) : content;
 };
 
 export default App;
