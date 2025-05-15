@@ -6,6 +6,7 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import DashboardLayout from './components/layout/DashboardLayout';
 import LoadingSpinner from './components/ui/LoadingSpinner';
+import { CartProvider } from './contexts/CartContext';
 
 // Lazy load other routes for better performance
 const MealPlanner = React.lazy(() => import('./pages/MealPlanner'));
@@ -38,74 +39,76 @@ const App: React.FC = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <Router>
-          <Routes>
-            {/* Public routes */}
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<div>Signup Page</div>} />
-            
-            {/* Main Layout */}
-            <Route path="/" element={<MainLayout />}>
-              <Route index element={<Home />} />
-              <Route path="search" element={<RecipeSearch />} />
-              <Route path="recipe/:id" element={<RecipeDetail />} />
-              <Route path="contact" element={<Contact />} />
-              <Route path="saved" element={
-                <ProtectedRoute>
-                  <SavedRecipes />
-                </ProtectedRoute>
-              } />
+        <CartProvider>
+          <Router>
+            <Routes>
+              {/* Public routes */}
+              <Route path="/login" element={<Login />} />
+              <Route path="/signup" element={<div>Signup Page</div>} />
               
-              {/* Dashboard Routes */}
-              <Route path="dashboard" element={
-                <ProtectedRoute>
-                  <DashboardLayout />
-                </ProtectedRoute>
-              }>
-                <Route index element={<Dashboard />} />
-                <Route path="meals" element={
-                  <React.Suspense fallback={<LoadingSpinner />}>
-                    <MealPlanner />
-                  </React.Suspense>
+              {/* Main Layout */}
+              <Route path="/" element={<MainLayout />}>
+                <Route index element={<Home />} />
+                <Route path="search" element={<RecipeSearch />} />
+                <Route path="recipe/:id" element={<RecipeDetail />} />
+                <Route path="contact" element={<Contact />} />
+                <Route path="saved" element={
+                  <ProtectedRoute>
+                    <SavedRecipes />
+                  </ProtectedRoute>
                 } />
-                <Route path="supplements" element={
-                  <React.Suspense fallback={<LoadingSpinner />}>
-                    <Supplements />
-                  </React.Suspense>
-                } />
-                <Route path="progress" element={
-                  <React.Suspense fallback={<LoadingSpinner />}>
-                    <Progress />
-                  </React.Suspense>
-                } />
-                <Route path="log" element={
-                  <React.Suspense fallback={<LoadingSpinner />}>
-                    <DailyLog />
-                  </React.Suspense>
-                } />
-                <Route path="learn" element={
-                  <React.Suspense fallback={<LoadingSpinner />}>
-                    <Learn />
-                  </React.Suspense>
-                } />
-                <Route path="settings" element={
-                  <React.Suspense fallback={<LoadingSpinner />}>
-                    <Settings />
-                  </React.Suspense>
-                } />
-                <Route path="profile" element={
-                  <React.Suspense fallback={<LoadingSpinner />}>
-                    <UserProfile />
-                  </React.Suspense>
-                } />
+                
+                {/* Dashboard Routes */}
+                <Route path="dashboard" element={
+                  <ProtectedRoute>
+                    <DashboardLayout />
+                  </ProtectedRoute>
+                }>
+                  <Route index element={<Dashboard />} />
+                  <Route path="meals" element={
+                    <React.Suspense fallback={<LoadingSpinner />}>
+                      <MealPlanner />
+                    </React.Suspense>
+                  } />
+                  <Route path="supplements" element={
+                    <React.Suspense fallback={<LoadingSpinner />}>
+                      <Supplements />
+                    </React.Suspense>
+                  } />
+                  <Route path="progress" element={
+                    <React.Suspense fallback={<LoadingSpinner />}>
+                      <Progress />
+                    </React.Suspense>
+                  } />
+                  <Route path="log" element={
+                    <React.Suspense fallback={<LoadingSpinner />}>
+                      <DailyLog />
+                    </React.Suspense>
+                  } />
+                  <Route path="learn" element={
+                    <React.Suspense fallback={<LoadingSpinner />}>
+                      <Learn />
+                    </React.Suspense>
+                  } />
+                  <Route path="settings" element={
+                    <React.Suspense fallback={<LoadingSpinner />}>
+                      <Settings />
+                    </React.Suspense>
+                  } />
+                  <Route path="profile" element={
+                    <React.Suspense fallback={<LoadingSpinner />}>
+                      <UserProfile />
+                    </React.Suspense>
+                  } />
+                </Route>
               </Route>
-            </Route>
 
-            {/* Catch all route */}
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
-          </Routes>
-          <ToastContainer position="bottom-right" />
-        </Router>
+              {/* Catch all route */}
+              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            </Routes>
+            <ToastContainer position="bottom-right" />
+          </Router>
+        </CartProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

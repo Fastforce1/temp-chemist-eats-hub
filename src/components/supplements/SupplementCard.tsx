@@ -1,21 +1,17 @@
 import React from 'react';
-import { Plus, Check } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import type { Supplement } from '../../types';
 
 interface SupplementCardProps {
   supplement: Supplement;
   isRecommended?: boolean;
-  isTaken?: boolean;
-  onAdd?: (supplement: Supplement) => void;
-  onMarkTaken?: (supplement: Supplement) => void;
+  onAdd: () => void;
 }
 
 const SupplementCard: React.FC<SupplementCardProps> = ({
   supplement,
   isRecommended = false,
-  isTaken = false,
-  onAdd,
-  onMarkTaken
+  onAdd
 }) => {
   const {
     name,
@@ -49,7 +45,7 @@ const SupplementCard: React.FC<SupplementCardProps> = ({
             <p className="text-sm text-gray-500">{brand}</p>
           </div>
           <span className="text-lg font-semibold text-gray-900">
-            ${price.toFixed(2)}
+            £{price.toFixed(2)}
           </span>
         </div>
 
@@ -77,27 +73,10 @@ const SupplementCard: React.FC<SupplementCardProps> = ({
           </p>
         </div>
 
-        <div className="mt-4 flex gap-2">
-          {!isTaken ? (
-            <button
-              onClick={() => onMarkTaken?.(supplement)}
-              className="flex-1 flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
-            >
-              <Check className="w-4 h-4 mr-2" />
-              Mark as Taken
-            </button>
-          ) : (
-            <button
-              disabled
-              className="flex-1 flex items-center justify-center px-4 py-2 bg-gray-100 rounded-lg text-sm font-medium text-gray-500 cursor-not-allowed"
-            >
-              <Check className="w-4 h-4 mr-2" />
-              Taken Today
-            </button>
-          )}
+        <div className="mt-4">
           <button
-            onClick={() => onAdd?.(supplement)}
-            className="flex items-center justify-center px-4 py-2 bg-blue-600 rounded-lg text-sm font-medium text-white hover:bg-blue-700"
+            onClick={onAdd}
+            className="w-full flex items-center justify-center px-4 py-2 bg-blue-600 rounded-lg text-sm font-medium text-white hover:bg-blue-700"
           >
             <Plus className="w-4 h-4 mr-2" />
             Add to Cart
