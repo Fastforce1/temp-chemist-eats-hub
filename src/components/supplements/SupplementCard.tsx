@@ -34,7 +34,7 @@ const SupplementCard: React.FC<SupplementCardProps> = ({
         <img
           src={image || '/placeholder-supplement.jpg'}
           alt={name}
-          className="w-full h-40 object-cover"
+          className="w-full h-40 object-contain bg-gray-50 p-4"
         />
       </div>
 

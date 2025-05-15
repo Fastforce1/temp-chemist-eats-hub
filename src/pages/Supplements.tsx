@@ -5,6 +5,9 @@ import Cart from '../components/cart/Cart';
 import { useCart } from '../contexts/CartContext';
 import type { Supplement } from '../types';
 
+// Brand logo for all Nutrition Chemist products
+const BRAND_LOGO = '/images/nutrition-chemist-logo.png';
+
 const MOCK_SUPPLEMENTS: Supplement[] = [
   {
     id: '1',
@@ -14,7 +17,7 @@ const MOCK_SUPPLEMENTS: Supplement[] = [
     benefits: ['Muscle Strength', 'Exercise Performance', 'Recovery'],
     dosage: '1500MG, 2 capsules daily',
     price: 4.25,
-    image: 'https://images.pexels.com/photos/3683091/pexels-photo-3683091.jpeg',
+    image: BRAND_LOGO,
     nutrients: {
       calories: 0,
       protein: 0,
@@ -33,7 +36,7 @@ const MOCK_SUPPLEMENTS: Supplement[] = [
     benefits: ['Skin Health', 'Hair Strength', 'Joint Support'],
     dosage: '1200MG, 2 capsules daily',
     price: 9.75,
-    image: 'https://images.pexels.com/photos/3683091/pexels-photo-3683091.jpeg',
+    image: BRAND_LOGO,
     nutrients: {
       calories: 5,
       protein: 1,
@@ -52,7 +55,7 @@ const MOCK_SUPPLEMENTS: Supplement[] = [
     benefits: ['Muscle Function', 'Bone Health', 'Energy Production'],
     dosage: '1800MG, 2 capsules daily',
     price: 7.65,
-    image: 'https://images.pexels.com/photos/3683091/pexels-photo-3683091.jpeg',
+    image: BRAND_LOGO,
     nutrients: {
       calories: 0,
       protein: 0,
@@ -71,7 +74,7 @@ const MOCK_SUPPLEMENTS: Supplement[] = [
     benefits: ['Immune Support', 'Antioxidant Protection', 'Skin Health'],
     dosage: '250MG, 1 tablet daily',
     price: 3.92,
-    image: 'https://images.pexels.com/photos/3683102/pexels-photo-3683102.jpeg',
+    image: BRAND_LOGO,
     nutrients: {
       calories: 0,
       protein: 0,
@@ -90,7 +93,7 @@ const MOCK_SUPPLEMENTS: Supplement[] = [
     benefits: ['Bone Health', 'Immune Function', 'Calcium Absorption'],
     dosage: '1 capsule daily',
     price: 6.10,
-    image: 'https://images.pexels.com/photos/3683091/pexels-photo-3683091.jpeg',
+    image: BRAND_LOGO,
     nutrients: {
       calories: 0,
       protein: 0,
@@ -110,7 +113,7 @@ const MOCK_SUPPLEMENTS: Supplement[] = [
     benefits: ['Cognitive Function', 'Mental Clarity', 'Nerve Health'],
     dosage: '4000MG, 2 capsules daily',
     price: 7.45,
-    image: 'https://images.pexels.com/photos/3683102/pexels-photo-3683102.jpeg',
+    image: BRAND_LOGO,
     nutrients: {
       calories: 0,
       protein: 0,
@@ -130,7 +133,7 @@ const MOCK_SUPPLEMENTS: Supplement[] = [
     benefits: ['Hair Growth', 'Skin Health', 'Nail Strength'],
     dosage: '10,000ug, 1 capsule daily',
     price: 5.65,
-    image: 'https://images.pexels.com/photos/3683104/pexels-photo-3683104.jpeg',
+    image: BRAND_LOGO,
     nutrients: {
       calories: 0,
       protein: 0,
@@ -149,7 +152,7 @@ const MOCK_SUPPLEMENTS: Supplement[] = [
     benefits: ['Skin Elasticity', 'Hair Growth', 'Joint Health', 'Protein Source'],
     dosage: '14g (1 scoop) daily',
     price: 15.32,
-    image: 'https://images.pexels.com/photos/12244376/pexels-photo-12244376.jpeg',
+    image: BRAND_LOGO,
     nutrients: {
       calories: 56,
       protein: 14,
