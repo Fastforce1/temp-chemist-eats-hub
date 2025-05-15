@@ -3,3 +3,7 @@ project_id = "btrqtckxwvqkotnpyhgo"
 
 [functions.fatsecret]
 verify_jwt = false
+
+[auth.external.google]
+enabled = true
+
