@@ -6,4 +6,6 @@ verify_jwt = false
 
 [auth.external.google]
 enabled = true
+client_id = "your-google-client-id"
+secret = "your-google-client-secret"
 
