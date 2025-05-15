@@ -6,7 +6,7 @@ import { useCart } from '../contexts/CartContext';
 import type { Supplement } from '../types';
 
 // Brand logo for all Nutrition Chemist products
-const BRAND_LOGO = '/images/nutrition-chemist-logo.png';
+const BRAND_LOGO = '/images/nutrition-chemist-logo.svg';
 
 const MOCK_SUPPLEMENTS: Supplement[] = [
   {
@@ -171,9 +171,9 @@ const Supplements: React.FC = () => {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const { addToCart, itemCount } = useCart();
 
-  const handleAddToCart = (supplement: Supplement) => {
-    console.log('Adding to cart:', supplement);
-    addToCart(supplement, 1);
+  const handleAddToCart = (supplement: Supplement, quantity: number) => {
+    console.log('Adding to cart:', supplement, 'quantity:', quantity);
+    addToCart(supplement, quantity);
   };
 
   return (
@@ -244,7 +244,7 @@ const Supplements: React.FC = () => {
                 key={supplement.id}
                 supplement={supplement}
                 isRecommended={activeTab === 'recommended'}
-                onAdd={() => handleAddToCart(supplement)}
+                onAdd={(quantity) => handleAddToCart(supplement, quantity)}
               />
             ))}
           </div>

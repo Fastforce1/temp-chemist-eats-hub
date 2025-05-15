@@ -1,11 +1,11 @@
-import React from 'react';
-import { Plus } from 'lucide-react';
+import React, { useState } from 'react';
+import { Plus, Minus } from 'lucide-react';
 import type { Supplement } from '../../types';
 
 interface SupplementCardProps {
   supplement: Supplement;
   isRecommended?: boolean;
-  onAdd: () => void;
+  onAdd: (quantity: number) => void;
 }
 
 const SupplementCard: React.FC<SupplementCardProps> = ({
@@ -13,6 +13,7 @@ const SupplementCard: React.FC<SupplementCardProps> = ({
   isRecommended = false,
   onAdd
 }) => {
+  const [quantity, setQuantity] = useState(1);
   const {
     name,
     brand,
@@ -22,6 +23,13 @@ const SupplementCard: React.FC<SupplementCardProps> = ({
     price,
     image
   } = supplement;
+
+  const handleQuantityChange = (delta: number) => {
+    const newQuantity = quantity + delta;
+    if (newQuantity >= 1) {
+      setQuantity(newQuantity);
+    }
+  };
 
   return (
     <div className="bg-white rounded-xl shadow-sm overflow-hidden">
@@ -73,9 +81,24 @@ const SupplementCard: React.FC<SupplementCardProps> = ({
           </p>
         </div>
 
-        <div className="mt-4">
+        <div className="mt-4 space-y-3">
+          <div className="flex items-center justify-center space-x-4">
+            <button
+              onClick={() => handleQuantityChange(-1)}
+              className="p-1 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-100"
+            >
+              <Minus className="w-4 h-4" />
+            </button>
+            <span className="text-gray-900 font-medium w-8 text-center">{quantity}</span>
+            <button
+              onClick={() => handleQuantityChange(1)}
+              className="p-1 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-100"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+          </div>
           <button
-            onClick={onAdd}
+            onClick={() => onAdd(quantity)}
             className="w-full flex items-center justify-center px-4 py-2 bg-blue-600 rounded-lg text-sm font-medium text-white hover:bg-blue-700"
           >
             <Plus className="w-4 h-4 mr-2" />
