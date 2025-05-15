@@ -1,4 +1,4 @@
-
+import React from 'react';
 import { LineChart, PieChart, Users, TrendingUp } from 'lucide-react';
 
 // Import the new components
@@ -8,7 +8,7 @@ import CalorieChart from '../components/dashboard/CalorieChart';
 import NutrientGoals from '../components/dashboard/NutrientGoals';
 import MealsTable from '../components/dashboard/MealsTable';
 
-const Dashboard = () => {
+const Dashboard: React.FC = () => {
   // Mock data for visualization
   const calorieData = [
     { day: 'Mon', calories: 1850 },

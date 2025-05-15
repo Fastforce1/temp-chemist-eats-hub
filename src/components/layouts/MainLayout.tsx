@@ -11,6 +11,7 @@ import {
   X,
   LogOut,
   MessageSquare,
+  Pill,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import Logo from '../ui/Logo';
@@ -38,9 +39,10 @@ const MainLayout = () => {
     { path: '/', label: 'Home', icon: <ChefHat className="w-5 h-5" /> },
     { path: '/search', label: 'Find Recipes', icon: <Search className="w-5 h-5" /> },
     { path: '/saved', label: 'Saved Recipes', icon: <BookMarked className="w-5 h-5" /> },
-    { path: '/meal-planner', label: 'Meal Planner', icon: <Calendar className="w-5 h-5" /> },
+    { path: '/dashboard/meals', label: 'Meal Planner', icon: <Calendar className="w-5 h-5" /> },
+    { path: '/dashboard/supplements', label: 'Supplements', icon: <Pill className="w-5 h-5" /> },
     { path: '/dashboard', label: 'Nutrition Dashboard', icon: <LineChart className="w-5 h-5" /> },
-    { path: '/profile', label: 'Profile', icon: <User className="w-5 h-5" /> },
+    { path: '/dashboard/profile', label: 'Profile', icon: <User className="w-5 h-5" /> },
     { path: '/contact', label: 'Contact Us', icon: <MessageSquare className="w-5 h-5" /> },
   ];
 

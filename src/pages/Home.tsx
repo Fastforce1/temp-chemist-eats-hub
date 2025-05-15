@@ -1,4 +1,3 @@
-
 import { useNavigate } from 'react-router-dom';
 import { Search, BookMarked, Calendar, LineChart } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -25,7 +24,7 @@ const Home = () => {
     {
       icon: <Calendar className="h-8 w-8 text-emerald-500" />,
       title: 'Plan Your Meals',
-      description: 'Schedule your meals for the week and get automated shopping lists.',
+      description: 'Schedule your meals for the week and track your supplement intake.',
       action: () => navigate('/meal-planner'),
       actionText: 'Plan Meals'
     },

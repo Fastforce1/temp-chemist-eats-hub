@@ -1,8 +1,20 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './contexts/AuthContext';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import DashboardLayout from './components/layout/DashboardLayout';
+import LoadingSpinner from './components/ui/LoadingSpinner';
+
+// Lazy load other routes for better performance
+const MealPlanner = React.lazy(() => import('./pages/MealPlanner'));
+const Supplements = React.lazy(() => import('./pages/Supplements'));
+const Progress = React.lazy(() => import('./pages/Progress'));
+const DailyLog = React.lazy(() => import('./pages/DailyLog'));
+const Learn = React.lazy(() => import('./pages/Learn'));
+const Settings = React.lazy(() => import('./pages/Settings'));
+const UserProfile = React.lazy(() => import('./pages/UserProfile'));
 
 // Layouts
 import MainLayout from './components/layouts/MainLayout';
@@ -13,8 +25,6 @@ import RecipeSearch from './pages/RecipeSearch';
 import RecipeDetail from './pages/RecipeDetail';
 import Dashboard from './pages/Dashboard';
 import SavedRecipes from './pages/SavedRecipes';
-import MealPlanner from './pages/MealPlanner';
-import UserProfile from './pages/UserProfile';
 import Login from './pages/Login';
 import Contact from './pages/Contact';
 
@@ -24,59 +34,81 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
 // Create a client
 const queryClient = new QueryClient();
 
-function App() {
+const App: React.FC = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <BrowserRouter>
+        <Router>
           <Routes>
+            {/* Public routes */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<div>Signup Page</div>} />
+            
+            {/* Main Layout */}
             <Route path="/" element={<MainLayout />}>
               <Route index element={<Home />} />
               <Route path="search" element={<RecipeSearch />} />
               <Route path="recipe/:id" element={<RecipeDetail />} />
-              <Route path="login" element={<Login />} />
               <Route path="contact" element={<Contact />} />
+              <Route path="saved" element={
+                <ProtectedRoute>
+                  <SavedRecipes />
+                </ProtectedRoute>
+              } />
               
-              {/* Protected Routes */}
-              <Route
-                path="dashboard"
-                element={
-                  <ProtectedRoute>
-                    <Dashboard />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="saved"
-                element={
-                  <ProtectedRoute>
-                    <SavedRecipes />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="meal-planner"
-                element={
-                  <ProtectedRoute>
+              {/* Dashboard Routes */}
+              <Route path="dashboard" element={
+                <ProtectedRoute>
+                  <DashboardLayout />
+                </ProtectedRoute>
+              }>
+                <Route index element={<Dashboard />} />
+                <Route path="meals" element={
+                  <React.Suspense fallback={<LoadingSpinner />}>
                     <MealPlanner />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="profile"
-                element={
-                  <ProtectedRoute>
+                  </React.Suspense>
+                } />
+                <Route path="supplements" element={
+                  <React.Suspense fallback={<LoadingSpinner />}>
+                    <Supplements />
+                  </React.Suspense>
+                } />
+                <Route path="progress" element={
+                  <React.Suspense fallback={<LoadingSpinner />}>
+                    <Progress />
+                  </React.Suspense>
+                } />
+                <Route path="log" element={
+                  <React.Suspense fallback={<LoadingSpinner />}>
+                    <DailyLog />
+                  </React.Suspense>
+                } />
+                <Route path="learn" element={
+                  <React.Suspense fallback={<LoadingSpinner />}>
+                    <Learn />
+                  </React.Suspense>
+                } />
+                <Route path="settings" element={
+                  <React.Suspense fallback={<LoadingSpinner />}>
+                    <Settings />
+                  </React.Suspense>
+                } />
+                <Route path="profile" element={
+                  <React.Suspense fallback={<LoadingSpinner />}>
                     <UserProfile />
-                  </ProtectedRoute>
-                }
-              />
+                  </React.Suspense>
+                } />
+              </Route>
             </Route>
+
+            {/* Catch all route */}
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
-        </BrowserRouter>
-        <ToastContainer position="bottom-right" />
+          <ToastContainer position="bottom-right" />
+        </Router>
       </AuthProvider>
     </QueryClientProvider>
   );
-}
+};
 
 export default App;
