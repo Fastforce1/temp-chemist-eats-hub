@@ -1,0 +1,5 @@
+
+project_id = "btrqtckxwvqkotnpyhgo"
+
+[functions.fatsecret]
+verify_jwt = false
