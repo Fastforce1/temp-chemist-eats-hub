@@ -1,15 +1,15 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Head } from '../../components/SEO/Head';
-import SEOMetadata from '../../components/SEOMetadata';
-import { Input } from "../../components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
-import { Button } from "../../components/ui/button";
+import { Head } from '../components/SEO/Head';
+import SEOMetadata from '../components/SEOMetadata';
+import { Input } from "../components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
+import { Button } from "../components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { AlertCircle, Info, Search, ShoppingCart, X } from 'lucide-react';
-import { useCart } from '../../contexts/CartContext';
+import { useCart } from '../contexts/CartContext';
 import { toast } from 'react-toastify';
-import OptimizedImage from '../../components/ui/OptimizedImage';
+import OptimizedImage from '../components/ui/OptimizedImage';
 
 interface Supplement {
   id: string;
@@ -208,7 +208,7 @@ const SupplementsPage: React.FC = () => {
                 type="text"
                 placeholder="Search by name, brand, or tag..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
                 className="pl-10"
               />
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />

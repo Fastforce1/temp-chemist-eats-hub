@@ -4,8 +4,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Elements } from '@stripe/react-stripe-js';
-import ReactHelmetAsync from 'react-helmet-async'; // Corrected import
-const { HelmetProvider } = ReactHelmetAsync;
+import { HelmetProvider } from 'react-helmet-async';
 import { AuthProvider } from './contexts/AuthContext';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -13,7 +12,7 @@ import { loadStripe } from '@stripe/stripe-js';
 
 // Layouts
 import MainLayout from './components/layouts/MainLayout';
-import DashboardLayout from './components/layout/DashboardLayout';
+import DashboardLayout from './components/layout/DashboardLayout'; // Read-only
 
 // Pages
 import Home from './pages/Home';
@@ -38,12 +37,22 @@ import UserProfile from './pages/UserProfile';
 import Settings from './pages/Settings';
 
 // Auth
-import ProtectedRoute from './components/auth/ProtectedRoute';
+import ProtectedRoute from './components/auth/ProtectedRoute'; // Read-only
 
 // Initialize Stripe
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 const queryClient = new QueryClient();
+
+// Helper components for Dashboard routes
+const DashboardRouteElement = () => <ProtectedRoute><DashboardLayout><Dashboard /></DashboardLayout></ProtectedRoute>;
+const MealPlannerRouteElement = () => <ProtectedRoute><DashboardLayout><MealPlanner /></DashboardLayout></ProtectedRoute>;
+const DailyLogRouteElement = () => <ProtectedRoute><DashboardLayout><DailyLog /></DashboardLayout></ProtectedRoute>;
+const ProgressRouteElement = () => <ProtectedRoute><DashboardLayout><Progress /></DashboardLayout></ProtectedRoute>;
+const HealthGoalsRouteElement = () => <ProtectedRoute><DashboardLayout><HealthGoals /></DashboardLayout></ProtectedRoute>;
+const SavedRecipesRouteElement = () => <ProtectedRoute><DashboardLayout><SavedRecipes /></DashboardLayout></ProtectedRoute>;
+const UserProfileRouteElement = () => <ProtectedRoute><DashboardLayout><UserProfile /></DashboardLayout></ProtectedRoute>;
+const SettingsRouteElement = () => <ProtectedRoute><DashboardLayout><Settings /></DashboardLayout></ProtectedRoute>;
 
 function App() {
   return (
@@ -68,70 +77,14 @@ function App() {
                 </Route>
 
                 {/* Protected Dashboard Routes with DashboardLayout */}
-                <Route
-                  path="/dashboard"
-                  element={
-                    <ProtectedRoute>
-                      <DashboardLayout><Dashboard /></DashboardLayout>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/dashboard/meals"
-                  element={
-                    <ProtectedRoute>
-                      <DashboardLayout><MealPlanner /></DashboardLayout>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/dashboard/log"
-                  element={
-                    <ProtectedRoute>
-                      <DashboardLayout><DailyLog /></DashboardLayout>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/dashboard/progress"
-                  element={
-                    <ProtectedRoute>
-                      <DashboardLayout><Progress /></DashboardLayout>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/dashboard/goals"
-                  element={
-                    <ProtectedRoute>
-                      <DashboardLayout><HealthGoals /></DashboardLayout>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/dashboard/saved-recipes"
-                  element={
-                    <ProtectedRoute>
-                      <DashboardLayout><SavedRecipes /></DashboardLayout>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/dashboard/profile"
-                  element={
-                    <ProtectedRoute>
-                      <DashboardLayout><UserProfile /></DashboardLayout>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/dashboard/settings"
-                  element={
-                    <ProtectedRoute>
-                      <DashboardLayout><Settings /></DashboardLayout>
-                    </ProtectedRoute>
-                  }
-                />
+                <Route path="/dashboard" element={<DashboardRouteElement />} />
+                <Route path="/dashboard/meals" element={<MealPlannerRouteElement />} />
+                <Route path="/dashboard/log" element={<DailyLogRouteElement />} />
+                <Route path="/dashboard/progress" element={<ProgressRouteElement />} />
+                <Route path="/dashboard/goals" element={<HealthGoalsRouteElement />} />
+                <Route path="/dashboard/saved-recipes" element={<SavedRecipesRouteElement />} />
+                <Route path="/dashboard/profile" element={<UserProfileRouteElement />} />
+                <Route path="/dashboard/settings" element={<SettingsRouteElement />} />
 
                 {/* Fallback for any other route */}
                 <Route path="*" element={<Navigate to="/" replace />} />
@@ -157,3 +110,4 @@ function App() {
 }
 
 export default App;
+
