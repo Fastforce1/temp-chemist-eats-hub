@@ -112,6 +112,22 @@ const CartPageContent: React.FC = () => {
     }
   };
 
+  // Safe price formatter with fallback
+  const formatPrice = (price?: number) => {
+    if (typeof price !== 'number') return '0.00';
+    return price.toFixed(2);
+  };
+
+  // Safe total calculation
+  const calculateTotal = (items: CartItem[]) => {
+    if (!Array.isArray(items)) return 0;
+    return items.reduce((sum, item) => {
+      const price = item?.supplement?.price || 0;
+      const quantity = item?.quantity || 0;
+      return sum + (price * quantity);
+    }, 0);
+  };
+
   if (error) {
     return (
       <div className="text-center py-12">
@@ -138,7 +154,7 @@ const CartPageContent: React.FC = () => {
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-2xl font-semibold text-gray-900 flex items-center">
             <ShoppingCart className="h-6 w-6 mr-2" />
-            Shopping Cart ({itemCount} items)
+            Shopping Cart ({itemCount || 0} items)
           </h1>
           <button
             onClick={() => navigate(-1)}
@@ -165,21 +181,21 @@ const CartPageContent: React.FC = () => {
               <div className="divide-y divide-gray-200">
                 {items.map((item) => (
                   <div
-                    key={item.supplement.id}
+                    key={item?.supplement?.id || 'unknown'}
                     className="flex items-center justify-between p-6"
                   >
                     <div className="flex items-center space-x-4">
                       <img
-                        src={item.supplement.image || '/placeholder-supplement.jpg'}
-                        alt={item.supplement.name}
+                        src={item?.supplement?.image || '/placeholder-supplement.jpg'}
+                        alt={item?.supplement?.name || 'Supplement'}
                         className="h-20 w-20 rounded-md object-cover"
                       />
                       <div>
                         <h3 className="text-lg font-medium text-gray-900">
-                          {item.supplement.name}
+                          {item?.supplement?.name || 'Unknown Supplement'}
                         </h3>
                         <p className="text-sm text-gray-500">
-                          £{item.supplement.price.toFixed(2)} each
+                          £{formatPrice(item?.supplement?.price)} each
                         </p>
                       </div>
                     </div>
@@ -188,40 +204,36 @@ const CartPageContent: React.FC = () => {
                       <div className="flex items-center space-x-2">
                         <button
                           onClick={() => {
-                            console.log('Decreasing quantity:', {
-                              itemId: item.supplement.id,
-                              currentQuantity: item.quantity,
-                            });
-                            updateQuantity(item.supplement.id, item.quantity - 1);
+                            if (item?.supplement?.id) {
+                              updateQuantity(item.supplement.id, (item.quantity || 1) - 1);
+                            }
                           }}
                           className="p-1 text-gray-400 hover:text-gray-500 disabled:opacity-50"
-                          disabled={item.quantity <= 1}
+                          disabled={!item?.supplement?.id || (item?.quantity || 0) <= 1}
                         >
                           <Minus className="h-5 w-5" />
                         </button>
-                        <span className="text-gray-600 w-8 text-center">{item.quantity}</span>
+                        <span className="text-gray-600 w-8 text-center">{item?.quantity || 0}</span>
                         <button
                           onClick={() => {
-                            console.log('Increasing quantity:', {
-                              itemId: item.supplement.id,
-                              currentQuantity: item.quantity,
-                            });
-                            updateQuantity(item.supplement.id, item.quantity + 1);
+                            if (item?.supplement?.id) {
+                              updateQuantity(item.supplement.id, (item.quantity || 1) + 1);
+                            }
                           }}
                           className="p-1 text-gray-400 hover:text-gray-500"
+                          disabled={!item?.supplement?.id}
                         >
                           <Plus className="h-5 w-5" />
                         </button>
                       </div>
                       <button
                         onClick={() => {
-                          console.log('Removing item:', {
-                            itemId: item.supplement.id,
-                            name: item.supplement.name,
-                          });
-                          removeFromCart(item.supplement.id);
+                          if (item?.supplement?.id) {
+                            removeFromCart(item.supplement.id);
+                          }
                         }}
                         className="text-red-500 hover:text-red-600"
+                        disabled={!item?.supplement?.id}
                       >
                         <X className="h-6 w-6" />
                       </button>
@@ -234,7 +246,7 @@ const CartPageContent: React.FC = () => {
             <div className="bg-white rounded-lg shadow p-6">
               <div className="flex justify-between text-base font-medium text-gray-900 mb-4">
                 <p>Subtotal</p>
-                <p>£{total.toFixed(2)}</p>
+                <p>£{formatPrice(calculateTotal(items))}</p>
               </div>
               <p className="text-sm text-gray-500 mb-6">
                 Shipping and taxes calculated at checkout.

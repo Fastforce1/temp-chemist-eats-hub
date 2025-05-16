@@ -20,24 +20,41 @@ const CART_STORAGE_KEY = 'nutrition-chemist-cart';
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
+const isValidSupplement = (supplement: any): supplement is Supplement => {
+  return (
+    supplement &&
+    typeof supplement === 'object' &&
+    typeof supplement.id === 'string' &&
+    typeof supplement.name === 'string' &&
+    typeof supplement.price === 'number'
+  );
+};
+
+const isValidCartItem = (item: any): item is CartItem => {
+  return (
+    item &&
+    typeof item === 'object' &&
+    isValidSupplement(item.supplement) &&
+    typeof item.quantity === 'number' &&
+    item.quantity > 0
+  );
+};
+
 const validateCartData = (data: any): CartItem[] => {
   if (!Array.isArray(data)) {
     console.error('Invalid cart data: not an array', data);
     return [];
   }
 
-  return data.filter(item => {
-    const isValid = item && 
-      item.supplement && 
-      typeof item.supplement === 'object' &&
-      typeof item.supplement.id === 'string' &&
-      typeof item.quantity === 'number';
-    
+  const validItems = data.filter(item => {
+    const isValid = isValidCartItem(item);
     if (!isValid) {
       console.error('Invalid cart item:', item);
     }
     return isValid;
   });
+
+  return validItems;
 };
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -69,6 +86,14 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Save to localStorage whenever cart changes
   useEffect(() => {
     try {
+      // Validate before saving
+      const validItems = validateCartData(items);
+      if (validItems.length !== items.length) {
+        console.warn('Some cart items were invalid and will be removed');
+        setItems(validItems);
+        return;
+      }
+
       console.log('Saving cart to localStorage:', items);
       localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
       console.log('Cart saved successfully');
@@ -77,16 +102,17 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [items]);
 
-  // Debug effect to log cart state changes
-  useEffect(() => {
-    console.log('Cart state updated:', {
-      itemCount: items.reduce((sum, item) => sum + item.quantity, 0),
-      total: items.reduce((sum, item) => sum + item.supplement.price * item.quantity, 0),
-      items,
-    });
-  }, [items]);
-
   const addToCart = useCallback((supplement: Supplement, quantity: number = 1) => {
+    if (!isValidSupplement(supplement)) {
+      console.error('Invalid supplement:', supplement);
+      return;
+    }
+
+    if (quantity <= 0) {
+      console.error('Invalid quantity:', quantity);
+      return;
+    }
+
     console.log('Adding to cart:', { supplement, quantity });
     setItems(currentItems => {
       const existingItem = currentItems.find(item => item.supplement.id === supplement.id);
@@ -106,6 +132,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const removeFromCart = useCallback((supplementId: string) => {
+    if (typeof supplementId !== 'string') {
+      console.error('Invalid supplement ID:', supplementId);
+      return;
+    }
+
     console.log('Removing from cart:', supplementId);
     setItems(currentItems => {
       const newItems = currentItems.filter(item => item.supplement.id !== supplementId);
@@ -115,8 +146,13 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const updateQuantity = useCallback((supplementId: string, quantity: number) => {
-    if (quantity < 1) {
-      console.log('Ignoring invalid quantity:', quantity);
+    if (typeof supplementId !== 'string') {
+      console.error('Invalid supplement ID:', supplementId);
+      return;
+    }
+
+    if (quantity <= 0) {
+      console.error('Invalid quantity:', quantity);
       return;
     }
     
@@ -138,12 +174,18 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const total = items.reduce(
-    (sum, item) => sum + item.supplement.price * item.quantity,
+    (sum, item) => {
+      if (!isValidCartItem(item)) return sum;
+      return sum + item.supplement.price * item.quantity;
+    },
     0
   );
 
   const itemCount = items.reduce(
-    (sum, item) => sum + item.quantity,
+    (sum, item) => {
+      if (!isValidCartItem(item)) return sum;
+      return sum + item.quantity;
+    },
     0
   );
 
