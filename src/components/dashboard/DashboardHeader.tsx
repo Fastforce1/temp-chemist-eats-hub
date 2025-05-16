@@ -1,4 +1,5 @@
-import React from 'react';
+
+// Removed React import as it's not used directly with new JSX transform
 
 interface DashboardHeaderProps {
   title: string;

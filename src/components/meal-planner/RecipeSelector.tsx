@@ -1,7 +1,8 @@
 
 import React, { useState } from 'react';
 import { Search, X } from 'lucide-react';
-import type { Recipe, Ingredient, NutrientData } from '../../types'; // Ensure Ingredient and NutrientData are imported if not already
+// Removed unused Ingredient import from here, NutrientData is used.
+import type { Recipe, NutrientData } from '../../types'; 
 
 interface RecipeSelectorProps {
   isOpen: boolean;
