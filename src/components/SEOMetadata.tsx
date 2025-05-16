@@ -1,4 +1,7 @@
-import { Helmet } from 'react-helmet-async';
+
+// import { Helmet } from 'react-helmet-async'; // Old import
+import ReactHelmetAsync from 'react-helmet-async'; // New import
+const { Helmet } = ReactHelmetAsync; // Destructure
 
 interface SEOMetadataProps {
   title?: string;
@@ -12,7 +15,7 @@ export default function SEOMetadata({
   title = 'Premium UK Nutrition Supplements | Compare & Save',
   description = 'Compare premium UK nutrition supplements. Find research-backed alternatives with proven bioavailability. Expert-formulated vitamins & minerals at better value.',
   keywords = 'UK nutrition supplements, compare supplements, supplement alternatives, wellness products, premium supplements, better value supplements',
-  canonicalUrl = 'https://yourwebsite.com',
+  canonicalUrl = 'https://yourwebsite.com', // Note: This should ideally be dynamic or from env
   ogImage = '/images/og-image.jpg'
 }: SEOMetadataProps) {
   const structuredData = {
@@ -21,7 +24,7 @@ export default function SEOMetadata({
     "name": "ChemistEatsHub",
     "description": "Premium UK nutrition supplements with research-backed formulas",
     "url": canonicalUrl,
-    "logo": `${canonicalUrl}/images/logo.png`,
+    "logo": `${canonicalUrl}/images/logo.png`, // Ensure logo path is correct
     "sameAs": [
       "https://facebook.com/chemisteatshub",
       "https://instagram.com/chemisteatshub",
@@ -143,4 +146,4 @@ export default function SEOMetadata({
       </script>
     </Helmet>
   );
-} 
+}

@@ -1,5 +1,8 @@
+
 import React from 'react';
-import { Helmet } from 'react-helmet-async';
+// import { Helmet } from 'react-helmet-async'; // Old import
+import ReactHelmetAsync from 'react-helmet-async'; // New import
+const { Helmet } = ReactHelmetAsync; // Destructure
 
 interface SEOProps {
   title: string;
@@ -94,4 +97,4 @@ export const Head: React.FC<SEOProps> = ({
       )}
     </Helmet>
   );
-}; 
+};
