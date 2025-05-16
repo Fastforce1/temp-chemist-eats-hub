@@ -4,6 +4,18 @@ import Stripe from "https://esm.sh/stripe@12.1.0";
 
 console.log("🚀 Function deployed and ready!");
 
+// Map our supplement IDs to Stripe Product IDs
+const PRODUCT_ID_MAP: Record<string, string> = {
+  '1': 'prod_creatine',      // 65 Creatine Capsules
+  '2': 'prod_collagen',      // 90 Bovine Collagen Capsules
+  '3': 'prod_magnesium',     // 90 Magnesium 3-in-1
+  '4': 'prod_vitaminc',      // 65 Vitamin C Orange Flavour
+  '5': 'prod_vitamind',      // 125 Vitamin D3 4000iu + K2
+  '6': 'prod_lionsmane',     // 65 Lions Mane + Black Pepper Extract
+  '7': 'prod_biotin',        // 125 Biotin Growth
+  '8': 'prod_collagenpowder' // Beauty Glow Bovine Collagen Peptides Protein Powder
+};
+
 export const handler = async (req: Request): Promise<Response> => {
   const corsHeaders = {
     "Access-Control-Allow-Origin": "*",
@@ -31,18 +43,21 @@ export const handler = async (req: Request): Promise<Response> => {
       throw new Error("Invalid cart items");
     }
 
-    const lineItems = cartItems.map((item: any) => ({
-      price_data: {
-        currency: "gbp",
-        product_data: {
-          name: item.supplement.name,
-          images: item.supplement.image ? [item.supplement.image] : undefined,
-          description: item.supplement.description || undefined,
+    const lineItems = cartItems.map((item: any) => {
+      const stripeProductId = PRODUCT_ID_MAP[item.supplement.id];
+      if (!stripeProductId) {
+        throw new Error(`No Stripe product found for supplement ID: ${item.supplement.id}`);
+      }
+
+      return {
+        price_data: {
+          currency: "gbp",
+          product: stripeProductId,
+          unit_amount: Math.round(item.supplement.price * 100), // Convert to pence
         },
-        unit_amount: Math.round(item.supplement.price * 100), // Convert to pence
-      },
-      quantity: item.quantity,
-    }));
+        quantity: item.quantity,
+      };
+    });
 
     console.log("💳 Creating Stripe checkout session...");
     const session = await stripe.checkout.sessions.create({
@@ -64,7 +79,7 @@ export const handler = async (req: Request): Promise<Response> => {
       stack: error?.stack,
     });
 
-    return new Response(JSON.stringify({ error: "Internal Server Error" }), {
+    return new Response(JSON.stringify({ error: error?.message || "Internal Server Error" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
