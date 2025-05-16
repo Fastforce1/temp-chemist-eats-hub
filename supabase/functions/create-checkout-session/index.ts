@@ -30,9 +30,35 @@ export const handler = async (req: Request): Promise<Response> => {
   try {
     console.log("📥 Incoming request to create checkout session");
 
+    // Initialize Stripe
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, {
       apiVersion: "2022-11-15",
     });
+
+    // Get user info if authenticated
+    let userId = 'guest';
+    const authHeader = req.headers.get('Authorization');
+    if (authHeader) {
+      try {
+        const supabase = createClient(
+          Deno.env.get("SUPABASE_URL")!,
+          Deno.env.get("SUPABASE_ANON_KEY")!,
+          {
+            global: { headers: { Authorization: authHeader } },
+          }
+        );
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          userId = user.id;
+          console.log("✅ Authenticated user:", userId);
+        }
+      } catch (error) {
+        console.warn("⚠️ Error getting user info:", error);
+        // Continue as guest if auth fails
+      }
+    } else {
+      console.log("👥 Processing as guest checkout");
+    }
 
     console.log("📦 Reading request body...");
     const body = await req.json();
@@ -66,6 +92,9 @@ export const handler = async (req: Request): Promise<Response> => {
       line_items: lineItems,
       success_url: `${Deno.env.get("FRONTEND_URL")}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${Deno.env.get("FRONTEND_URL")}/cart`,
+      metadata: {
+        user_id: userId
+      }
     });
 
     console.log("✅ Session created:", session.id);
