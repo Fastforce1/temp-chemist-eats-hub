@@ -168,10 +168,20 @@ serve(async (req: Request) => {
     try {
       customerId = await createOrRetrieveCustomer(user?.email, user?.id);
     } catch (error) {
-      console.error("Failed to create/retrieve customer:", error);
-      return new Response(JSON.stringify({ error: "Failed to process customer information." }), {
+      console.error("🔥 Unhandled error:", {
+        message: error?.message,
+        stack: error?.stack,
+        error
+      });
+
+      return new Response(JSON.stringify({
+        error: error?.message || "Internal server error."
+      }), {
         status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json"
+        }
       });
     }
 
@@ -247,13 +257,20 @@ serve(async (req: Request) => {
     });
 
   } catch (error) {
-    console.error("Checkout error:", error);
-    return new Response(JSON.stringify({ 
-      error: error instanceof Error ? error.message : "An unexpected error occurred.",
-      details: error instanceof Error ? error.stack : undefined,
+    console.error("🔥 Unhandled error:", {
+      message: error?.message,
+      stack: error?.stack,
+      error
+    });
+
+    return new Response(JSON.stringify({
+      error: error?.message || "Internal server error."
     }), {
       status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "application/json"
+      }
     });
   }
 });
