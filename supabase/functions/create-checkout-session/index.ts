@@ -105,37 +105,6 @@ export const handler = async (req: Request): Promise<Response> => {
       apiVersion: "2022-11-15",
     });
 
-    // Get user info if authenticated
-    let userId = 'guest';
-    const authHeader = req.headers.get('Authorization');
-    
-    // Only initialize Supabase client and verify auth if we have an auth header
-    if (authHeader?.startsWith('Bearer ')) {
-      try {
-        const supabase = createClient(
-          getEnvVar("SUPABASE_URL"),
-          getEnvVar("SUPABASE_ANON_KEY"),
-          {
-            global: { headers: { Authorization: authHeader } },
-          }
-        );
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
-        
-        if (authError) {
-          console.warn("⚠️ Auth verification failed:", authError.message);
-          // Continue as guest if auth fails
-        } else if (user) {
-          userId = user.id;
-          console.log("✅ Authenticated user:", userId);
-        }
-      } catch (error) {
-        console.warn("⚠️ Error getting user info:", error);
-        // Continue as guest if auth fails
-      }
-    } else {
-      console.log("👥 Processing as guest checkout - no auth header");
-    }
-
     // Parse and validate request body
     let body;
     try {
@@ -146,6 +115,10 @@ export const handler = async (req: Request): Promise<Response> => {
     }
 
     console.log("🛒 Cart body:", body);
+
+    // Get user ID from request body or default to guest
+    const userId = body.userId || 'guest';
+    console.log(`👤 Processing checkout for user: ${userId}`);
 
     const cartItems = body.items;
     if (!cartItems || !Array.isArray(cartItems)) {

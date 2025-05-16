@@ -48,27 +48,15 @@ const CartPage: React.FC = () => {
         },
         quantity: item.quantity,
       })),
+      userId: user?.id
     };
 
     console.log('Prepared cart details:', cartDetails);
     console.log('Sending checkout request to Supabase function...');
     
     try {
-      let headers = {};
-      
-      // Only add Authorization header if user is logged in
-      if (user) {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.access_token) {
-          headers = {
-            Authorization: `Bearer ${session.access_token}`,
-          };
-        }
-      }
-
       const { data, error } = await supabase.functions.invoke('create-checkout-session', {
         body: cartDetails,
-        headers,
         method: 'POST'
       });
 
