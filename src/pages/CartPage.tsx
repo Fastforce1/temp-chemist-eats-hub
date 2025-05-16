@@ -6,12 +6,41 @@ import { ShoppingCart, Minus, Plus, X, Loader2, User } from 'lucide-react';
 import { supabase } from '../integrations/supabase/client';
 import { toast } from 'react-toastify';
 import { Head } from '../components/SEO/Head';
+import ErrorBoundary from '../components/ErrorBoundary';
 
-const CartPage: React.FC = () => {
+const CartPageContent: React.FC = () => {
   const navigate = useNavigate();
   const { items, removeFromCart, updateQuantity, total, itemCount, clearCart } = useCart();
   const { user } = useAuth();
   const [isLoading, setIsLoading] = React.useState(false);
+  const [error, setError] = React.useState<Error | null>(null);
+
+  // Reset error state when items change
+  React.useEffect(() => {
+    setError(null);
+  }, [items]);
+
+  // Log cart state changes and check for potential issues
+  React.useEffect(() => {
+    try {
+      console.log('Cart state in CartPage:', {
+        itemCount,
+        total,
+        items,
+        hasItems: items && items.length > 0,
+        itemsValid: items?.every(item => item?.supplement?.id && item?.quantity > 0),
+      });
+
+      // Validate cart items
+      if (items?.some(item => !item?.supplement?.id || item?.quantity <= 0)) {
+        console.error('Invalid cart items detected:', items);
+        setError(new Error('Some items in your cart are invalid'));
+      }
+    } catch (err) {
+      console.error('Error in cart state effect:', err);
+      setError(err instanceof Error ? err : new Error('Unknown error in cart state'));
+    }
+  }, [items, itemCount, total]);
 
   const handleCheckout = async () => {
     setIsLoading(true);
@@ -22,86 +51,80 @@ const CartPage: React.FC = () => {
       userId: user?.id,
     });
 
-    if (items.length === 0) {
-      console.error('Attempted checkout with empty cart');
-      toast.error("Your cart is empty.");
-      setIsLoading(false);
-      return;
-    }
-
-    // Get the current session
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.access_token) {
-      console.error('No access token available');
-      toast.error("Authentication error. Please try logging in again.");
-      setIsLoading(false);
-      return;
-    }
-
-    // Validate cart items before sending
-    const invalidItems = items.filter(item => !item.supplement || !item.quantity);
-    if (invalidItems.length > 0) {
-      console.error('Invalid cart items detected:', invalidItems);
-      toast.error("Some items in your cart are invalid. Please try refreshing the page.");
-      setIsLoading(false);
-      return;
-    }
-
-    const cartDetails = {
-      items: items.map(item => ({
-        supplement: {
-          id: item.supplement.id,
-          name: item.supplement.name,
-          price: item.supplement.price,
-          image: item.supplement.image,
-        },
-        quantity: item.quantity,
-      })),
-    };
-
-    console.log('Prepared cart details:', cartDetails);
-    console.log('Sending checkout request to Supabase function...');
-    
     try {
-      const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+      if (items.length === 0) {
+        throw new Error('Your cart is empty');
+      }
+
+      // Get the current session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('Authentication error. Please try logging in again.');
+      }
+
+      // Validate cart items before sending
+      const invalidItems = items.filter(item => !item?.supplement || !item?.quantity);
+      if (invalidItems.length > 0) {
+        console.error('Invalid cart items detected:', invalidItems);
+        throw new Error('Some items in your cart are invalid. Please try refreshing the page.');
+      }
+
+      const cartDetails = {
+        items: items.map(item => ({
+          supplement: {
+            id: item.supplement.id,
+            name: item.supplement.name,
+            price: item.supplement.price,
+            image: item.supplement.image,
+          },
+          quantity: item.quantity,
+        })),
+      };
+
+      console.log('Prepared cart details:', cartDetails);
+      console.log('Sending checkout request to Supabase function...');
+      
+      const { data, error: checkoutError } = await supabase.functions.invoke('create-checkout-session', {
         body: cartDetails,
         headers: {
           Authorization: `Bearer ${session.access_token}`,
         }
       });
 
-      console.log('Received response:', { data, error });
+      console.log('Received response:', { data, checkoutError });
 
-      if (error) {
-        console.error("Error invoking create-checkout-session:", error);
-        toast.error(`Checkout failed: ${error.message}`);
-        setIsLoading(false);
-        return;
+      if (checkoutError) {
+        throw new Error(`Checkout failed: ${checkoutError.message}`);
       }
 
-      if (data?.url) {
-        console.log('Redirecting to Stripe checkout:', data.url);
-        window.location.href = data.url;
-      } else {
-        console.error("No session URL returned:", data);
-        toast.error("Checkout failed: Could not retrieve payment session.");
-        setIsLoading(false);
+      if (!data?.url) {
+        throw new Error('Checkout failed: Could not retrieve payment session.');
       }
-    } catch (error: any) {
-      console.error("Exception during checkout:", error);
-      toast.error(`Checkout failed: ${error.message || "An unexpected error occurred"}`);
+
+      console.log('Redirecting to Stripe checkout:', data.url);
+      window.location.href = data.url;
+    } catch (err) {
+      console.error('Error during checkout:', err);
+      const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';
+      toast.error(errorMessage);
+      setError(err instanceof Error ? err : new Error(errorMessage));
       setIsLoading(false);
     }
   };
 
-  // Log cart state changes
-  React.useEffect(() => {
-    console.log('Cart state updated:', {
-      itemCount,
-      total,
-      items,
-    });
-  }, [items, itemCount, total]);
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <div className="text-red-500 mb-4">{error.message}</div>
+        <button
+          onClick={() => window.location.reload()}
+          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-emerald-600 hover:bg-emerald-700"
+        >
+          Refresh Page
+        </button>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -125,7 +148,7 @@ const CartPage: React.FC = () => {
           </button>
         </div>
 
-        {items.length === 0 ? (
+        {!items || items.length === 0 ? (
           <div className="text-center py-12">
             <ShoppingCart className="h-12 w-12 mx-auto text-gray-400 mb-4" />
             <p className="text-xl text-gray-500 mb-4">Your cart is empty</p>
@@ -236,7 +259,7 @@ const CartPage: React.FC = () => {
               <div className="space-y-4">
                 <button
                   onClick={handleCheckout}
-                  disabled={isLoading || items.length === 0}
+                  disabled={isLoading || !items || items.length === 0}
                   className="w-full flex items-center justify-center bg-emerald-600 px-6 py-3 text-base font-medium text-white shadow-sm hover:bg-emerald-700 rounded-lg disabled:opacity-70 disabled:cursor-not-allowed"
                 >
                   {isLoading ? (
@@ -250,7 +273,7 @@ const CartPage: React.FC = () => {
                     clearCart();
                   }}
                   className="w-full text-center text-sm text-gray-500 hover:text-gray-700"
-                  disabled={items.length === 0}
+                  disabled={!items || items.length === 0}
                 >
                   Clear Cart
                 </button>
@@ -262,5 +285,11 @@ const CartPage: React.FC = () => {
     </>
   );
 };
+
+const CartPage: React.FC = () => (
+  <ErrorBoundary>
+    <CartPageContent />
+  </ErrorBoundary>
+);
 
 export default CartPage; 
