@@ -23,28 +23,94 @@ const corsHeaders = {
 // Configuration
 const ALLOW_GUEST_CHECKOUT = true; // Flag to control guest checkout functionality
 
-// Validate required environment variables
-const requiredEnvVars = [
-  "STRIPE_SECRET_KEY",
-  "FRONTEND_URL",
-  ...(ALLOW_GUEST_CHECKOUT ? [] : ["SUPABASE_URL", "SUPABASE_ANON_KEY"]) // Only require Supabase env vars if guest checkout is disabled
-] as const;
-
-for (const envVar of requiredEnvVars) {
-  if (!Deno.env.get(envVar)) {
-    console.error(`❌ Missing required environment variable: ${envVar}`);
-    throw new Error(`Missing required environment variable: ${envVar}`);
-  }
+// Environment variable configuration
+interface EnvVarConfig {
+  required: boolean;
+  description: string;
+  validate?: (value: string) => true | string;
 }
 
+const ENV_CONFIG: Record<string, EnvVarConfig> = {
+  STRIPE_SECRET_KEY: {
+    required: true,
+    description: "Stripe secret key for payment processing"
+  },
+  FRONTEND_URL: {
+    required: true,
+    description: "Frontend URL for success/cancel redirects",
+    validate: (value: string) => {
+      try {
+        new URL(value);
+        return true;
+      } catch {
+        return "Must be a valid URL";
+      }
+    }
+  },
+  SUPABASE_URL: {
+    required: false, // Only required if not in guest-only mode
+    description: "Supabase project URL"
+  },
+  SUPABASE_ANON_KEY: {
+    required: false, // Only required if not in guest-only mode
+    description: "Supabase anonymous key"
+  }
+} as const;
+
+type EnvVar = keyof typeof ENV_CONFIG;
+
+// Helper function to validate environment variables
+const validateEnv = () => {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  for (const [key, config] of Object.entries(ENV_CONFIG)) {
+    const value = Deno.env.get(key);
+
+    if (!value && config.required) {
+      errors.push(`Missing required environment variable: ${key} (${config.description})`);
+      continue;
+    }
+
+    if (!value && !config.required) {
+      warnings.push(`Optional environment variable not set: ${key} (${config.description})`);
+      continue;
+    }
+
+    if (value && config.validate) {
+      const validationResult = config.validate(value);
+      if (validationResult !== true) {
+        errors.push(`Invalid ${key}: ${validationResult}`);
+      }
+    }
+  }
+
+  // Log warnings but don't fail
+  if (warnings.length > 0) {
+    console.warn("⚠️ Environment warnings:", warnings);
+  }
+
+  // Fail fast if any required variables are missing or invalid
+  if (errors.length > 0) {
+    console.error("❌ Environment validation failed:");
+    errors.forEach(error => console.error(`  - ${error}`));
+    throw new Error("Invalid environment configuration");
+  }
+
+  console.log("✅ Environment validation passed");
+};
+
 // Helper function to get typed environment variables
-const getEnvVar = (key: typeof requiredEnvVars[number]): string => {
+const getEnvVar = (key: EnvVar): string => {
   const value = Deno.env.get(key);
   if (!value) {
-    throw new Error(`Missing required environment variable: ${key}`);
+    throw new Error(`Missing environment variable: ${key} (${ENV_CONFIG[key].description})`);
   }
   return value;
 };
+
+// Validate environment on startup
+validateEnv();
 
 // Helper function to send error responses
 const errorResponse = (message: string, status: number = 400) => {
@@ -102,7 +168,7 @@ export const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    // Initialize Stripe
+    // Initialize Stripe with validated key
     const stripe = new Stripe(getEnvVar("STRIPE_SECRET_KEY"), {
       apiVersion: "2022-11-15",
     });
@@ -151,50 +217,114 @@ export const handler = async (req: Request): Promise<Response> => {
       console.log("👥 Processing as guest:", userId);
     }
 
-    const cartItems = body.items;
-    if (!cartItems || !Array.isArray(cartItems)) {
-      console.error("❌ Invalid cart structure:", cartItems);
-      return errorResponse("Invalid cart structure. Expected array of items.");
+    // Validate cart structure and contents
+    if (!body?.items || !Array.isArray(body.items)) {
+      console.error("❌ Invalid cart structure:", body);
+      return errorResponse("Invalid cart structure. Expected 'items' array in request body.");
     }
 
+    const cartItems = body.items;
+    
     if (cartItems.length === 0) {
       console.error("❌ Empty cart");
-      return errorResponse("Cart is empty");
+      return errorResponse("Cart is empty. Please add items before checkout.");
     }
 
-    const lineItems = cartItems.map((item: any) => {
-      const stripeProductId = PRODUCT_ID_MAP[item.supplement.id];
-      if (!stripeProductId) {
-        throw new Error(`No Stripe product found for supplement ID: ${item.supplement.id}`);
-      }
+    // Validate each cart item
+    const invalidItems = cartItems.filter(
+      (item: any) => 
+        !item?.supplement?.id ||
+        !item?.supplement?.name ||
+        typeof item?.supplement?.price !== 'number' ||
+        typeof item?.quantity !== 'number' ||
+        item.quantity < 1
+    );
 
-      return {
-        price_data: {
-          currency: "gbp",
-          product: stripeProductId,
-          unit_amount: Math.round(item.supplement.price * 100), // Convert to pence
-        },
-        quantity: item.quantity,
-      };
-    });
+    if (invalidItems.length > 0) {
+      console.error("❌ Invalid items found:", invalidItems);
+      return errorResponse(
+        "Invalid items in cart. Each item must have a valid supplement (id, name, price) and quantity.",
+        400
+      );
+    }
 
-    console.log("💳 Creating Stripe checkout session...");
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card"],
-      mode: "payment",
-      line_items: lineItems,
-      success_url: `${getEnvVar("FRONTEND_URL")}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${getEnvVar("FRONTEND_URL")}/cart`,
-      metadata: {
-        user_id: userId
-      }
-    });
+    // Check for valid product mappings
+    const invalidMappings = cartItems.filter(
+      (item: any) => !PRODUCT_ID_MAP[item.supplement.id]
+    );
 
-    console.log("✅ Session created:", session.id);
+    if (invalidMappings.length > 0) {
+      console.error("❌ Products not found in Stripe:", 
+        invalidMappings.map((item: any) => ({
+          id: item.supplement.id,
+          name: item.supplement.name
+        }))
+      );
+      return errorResponse(
+        `Some products are not available for purchase: ${
+          invalidMappings.map((item: any) => item.supplement.name).join(", ")
+        }`,
+        400
+      );
+    }
 
-    return new Response(JSON.stringify({ url: session.url }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    // Create line items with price validation
+    try {
+      const lineItems = cartItems.map((item: any) => {
+        const stripeProductId = PRODUCT_ID_MAP[item.supplement.id];
+        const unitAmount = Math.round(item.supplement.price * 100); // Convert to pence
+
+        if (unitAmount <= 0) {
+          throw new Error(`Invalid price for product ${item.supplement.name}: £${item.supplement.price}`);
+        }
+
+        return {
+          price_data: {
+            currency: "gbp",
+            product: stripeProductId,
+            unit_amount: unitAmount,
+          },
+          quantity: item.quantity,
+        };
+      });
+
+      console.log("💳 Creating Stripe checkout session with items:", 
+        lineItems.map(item => ({
+          product: item.price_data.product,
+          amount: `£${(item.price_data.unit_amount / 100).toFixed(2)}`,
+          quantity: item.quantity
+        }))
+      );
+
+      console.log("💳 Creating Stripe checkout session...");
+      const frontendUrl = getEnvVar("FRONTEND_URL");
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ["card"],
+        mode: "payment",
+        line_items: lineItems,
+        success_url: `${frontendUrl}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${frontendUrl}/cart`,
+        metadata: {
+          user_id: userId
+        }
+      });
+
+      console.log("✅ Session created:", session.id);
+
+      return new Response(JSON.stringify({ url: session.url }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    } catch (error) {
+      console.error("🔥 Error during line item creation:", {
+        message: error?.message,
+        stack: error?.stack,
+      });
+
+      return errorResponse(
+        error?.message || "Internal Server Error",
+        error?.status || 500
+      );
+    }
   } catch (error) {
     console.error("🔥 Error during checkout session creation:", {
       message: error?.message,
