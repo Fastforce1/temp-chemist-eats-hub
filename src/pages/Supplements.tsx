@@ -11,7 +11,7 @@ const BRAND_LOGO = '/images/nutrition-chemist-logo.svg';
 const MOCK_SUPPLEMENTS: Supplement[] = [
   {
     id: '1',
-    name: 'Creatine Capsules',
+    name: '65 Creatine Capsules',
     brand: 'Nutrition Chemist',
     description: 'High-quality creatine supplement for muscle strength and performance',
     benefits: ['Muscle Strength', 'Exercise Performance', 'Recovery'],
@@ -30,7 +30,7 @@ const MOCK_SUPPLEMENTS: Supplement[] = [
   },
   {
     id: '2',
-    name: 'Bovine Collagen Capsules',
+    name: '90 Bovine Collagen Capsules',
     brand: 'Nutrition Chemist',
     description: 'Premium bovine collagen for skin, hair, and joint health',
     benefits: ['Skin Health', 'Hair Strength', 'Joint Support'],
@@ -49,7 +49,7 @@ const MOCK_SUPPLEMENTS: Supplement[] = [
   },
   {
     id: '3',
-    name: 'Magnesium 3-in-1',
+    name: '90 Magnesium 3-in-1',
     brand: 'Nutrition Chemist',
     description: 'Triple-form magnesium supplement for optimal absorption',
     benefits: ['Muscle Function', 'Bone Health', 'Energy Production'],
@@ -68,7 +68,7 @@ const MOCK_SUPPLEMENTS: Supplement[] = [
   },
   {
     id: '4',
-    name: 'Vitamin C Orange Flavoured',
+    name: '65 Vitamin C Orange Flavour',
     brand: 'Nutrition Chemist',
     description: 'Sugar-free orange flavored vitamin C supplement',
     benefits: ['Immune Support', 'Antioxidant Protection', 'Skin Health'],
@@ -87,7 +87,7 @@ const MOCK_SUPPLEMENTS: Supplement[] = [
   },
   {
     id: '5',
-    name: 'Vitamin D3 4000iu + K2',
+    name: '125 Vitamin D3 4000iu + K2',
     brand: 'Nutrition Chemist',
     description: 'High-strength vitamin D3 with K2 for optimal absorption',
     benefits: ['Bone Health', 'Immune Function', 'Calcium Absorption'],
@@ -107,7 +107,7 @@ const MOCK_SUPPLEMENTS: Supplement[] = [
   },
   {
     id: '6',
-    name: 'Lions Mane + Black Pepper Extract',
+    name: '65 Lions Mane + Black Pepper Extract',
     brand: 'Nutrition Chemist',
     description: 'Premium lions mane mushroom supplement with enhanced absorption',
     benefits: ['Cognitive Function', 'Mental Clarity', 'Nerve Health'],
@@ -127,7 +127,7 @@ const MOCK_SUPPLEMENTS: Supplement[] = [
   },
   {
     id: '7',
-    name: 'Biotin Growth',
+    name: '125 Biotin Growth',
     brand: 'Nutrition Chemist',
     description: 'High-strength biotin supplement for hair, skin, and nail health',
     benefits: ['Hair Growth', 'Skin Health', 'Nail Strength'],
