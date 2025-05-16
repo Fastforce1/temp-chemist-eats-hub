@@ -1,12 +1,22 @@
+
 import React, { useState } from 'react';
 import { Search, X } from 'lucide-react';
-import type { Recipe } from '../../types';
+import type { Recipe, Ingredient, NutrientData } from '../../types'; // Ensure Ingredient and NutrientData are imported if not already
 
 interface RecipeSelectorProps {
   isOpen: boolean;
   onClose: () => void;
   onSelect: (recipe: Recipe) => void;
 }
+
+// Minimal NutrientData for mock ingredients
+const mockNutrientData: NutrientData = {
+  calories: 0,
+  protein: 0,
+  carbs: 0,
+  fat: 0,
+  micronutrients: {},
+};
 
 const MOCK_RECIPES: Recipe[] = [
   {
@@ -17,15 +27,24 @@ const MOCK_RECIPES: Recipe[] = [
     prepTime: 15,
     cookTime: 25,
     servings: 2,
-    calories: 450,
-    protein: 15,
-    carbs: 65,
-    fat: 18,
-    ingredients: ['quinoa', 'sweet potato', 'chickpeas', 'kale', 'tahini'],
+    nutrients: { // calories, protein, carbs, fat moved into nutrients object
+      calories: 450,
+      protein: 15,
+      carbs: 65,
+      fat: 18,
+      micronutrients: {} // Added empty micronutrients
+    },
+    ingredients: [ // ingredients converted to Ingredient[]
+      { id: 'ing1', name: 'quinoa', amount: 1, unit: 'cup', nutrients: mockNutrientData },
+      { id: 'ing2', name: 'sweet potato', amount: 1, unit: 'medium', nutrients: mockNutrientData },
+      { id: 'ing3', name: 'chickpeas', amount: 0.5, unit: 'cup', nutrients: mockNutrientData },
+      { id: 'ing4', name: 'kale', amount: 2, unit: 'cups', nutrients: mockNutrientData },
+      { id: 'ing5', name: 'tahini', amount: 2, unit: 'tbsp', nutrients: mockNutrientData },
+    ],
     instructions: ['Cook quinoa', 'Roast vegetables', 'Make dressing', 'Assemble bowl'],
     tags: ['Vegetarian', 'High Protein', 'Gluten Free']
   },
-  // Add more mock recipes
+  // Add more mock recipes following the same structure if needed
 ];
 
 const RecipeSelector: React.FC<RecipeSelectorProps> = ({ isOpen, onClose, onSelect }) => {
@@ -139,4 +158,4 @@ const RecipeSelector: React.FC<RecipeSelectorProps> = ({ isOpen, onClose, onSele
   );
 };
 
-export default RecipeSelector; 
+export default RecipeSelector;

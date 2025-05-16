@@ -1,12 +1,13 @@
+
 import React, { useState } from 'react';
 import {
   Bell,
   User,
   Lock,
-  Globe,
-  Activity,
+  // Globe, // Removed
+  // Activity, // Removed
   Database,
-  ToggleLeft,
+  // ToggleLeft, // Removed
   ChevronRight,
   Smartphone,
   Scale,
@@ -296,4 +297,4 @@ const Settings: React.FC = () => {
   );
 };
 
-export default Settings; 
+export default Settings;

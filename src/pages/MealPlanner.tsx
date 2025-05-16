@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { format, addDays, startOfWeek } from 'date-fns';
 import { Calendar, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import type { MealType, MealPlan, PlannedMeal } from '../types/meal';
-import type { Recipe } from '../types';
+import type { Recipe } from '../types'; // This imports Recipe from src/types/index.ts
 import RecipeSelector from '../components/meal-planner/RecipeSelector';
 
 const MEAL_TYPES: MealType[] = ['breakfast', 'lunch', 'dinner', 'snack'];
@@ -62,10 +62,11 @@ const MealPlanner: React.FC = () => {
       };
 
       Object.values(updatedMeals).flat().forEach(meal => {
-        totalNutrients.calories += meal.recipe.calories * meal.servings;
-        totalNutrients.protein += (meal.recipe.protein || 0) * meal.servings;
-        totalNutrients.carbs += (meal.recipe.carbs || 0) * meal.servings;
-        totalNutrients.fat += (meal.recipe.fat || 0) * meal.servings;
+        // Access nutrients via meal.recipe.nutrients
+        totalNutrients.calories += (meal.recipe.nutrients?.calories || 0) * meal.servings;
+        totalNutrients.protein += (meal.recipe.nutrients?.protein || 0) * meal.servings;
+        totalNutrients.carbs += (meal.recipe.nutrients?.carbs || 0) * meal.servings;
+        totalNutrients.fat += (meal.recipe.nutrients?.fat || 0) * meal.servings;
       });
 
       return {
@@ -143,10 +144,12 @@ const MealPlanner: React.FC = () => {
                         <h3 className="font-medium">{meal.recipe.name}</h3>
                         <p className="text-sm text-gray-500">
                           {meal.servings} serving{meal.servings > 1 ? 's' : ''} •{' '}
-                          {meal.recipe.calories} kcal
+                          {/* Access calories via meal.recipe.nutrients.calories */}
+                          {meal.recipe.nutrients?.calories || 0} kcal 
                         </p>
                       </div>
                       <button className="text-gray-400 hover:text-gray-600">
+                        {/* Consider changing this icon or its action if it's not a Plus action */}
                         <Plus className="w-5 h-5" />
                       </button>
                     </div>

@@ -61,7 +61,7 @@ const MOCK_SUPPLEMENTS: SupplementEntry[] = [
 ];
 
 const DailyLog: React.FC = () => {
-  const [meals, setMeals] = useState<MealEntry[]>(MOCK_MEALS);
+  const [meals] = useState<MealEntry[]>(MOCK_MEALS);
   const [supplements, setSupplements] = useState<SupplementEntry[]>(MOCK_SUPPLEMENTS);
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
@@ -190,4 +190,4 @@ const DailyLog: React.FC = () => {
   );
 };
 
-export default DailyLog; 
+export default DailyLog;
