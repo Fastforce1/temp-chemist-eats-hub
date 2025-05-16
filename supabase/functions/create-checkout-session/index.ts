@@ -94,19 +94,31 @@ serve(async (req: Request) => {
     });
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey);
 
-    // Get user data and log authentication status
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    console.log("Authentication status:", {
-      isAuthenticated: !!user,
-      userId: user?.id,
-      authError: authError?.message,
-    });
+    console.log("🔍 Fetching authenticated user...");
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    console.log("✅ User fetch result:", userData, userError);
+
+    if (userError) throw new Error("Failed to fetch user: " + userError.message);
+    const user = userData?.user;
+
+    if (!user || !user.email) {
+      console.warn("⚠️ User not authenticated or missing email:", user);
+      return new Response(JSON.stringify({
+        error: "User not authenticated."
+      }), {
+        status: 401,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json"
+        }
+      });
+    }
 
     // Parse and validate request body
-    const requestBody = await req.json();
-    console.log("Request body:", requestBody);
+    const body = await req.json();
+    console.log("🛒 Request body:", body);
+    const cartItems = body.items;
 
-    const cartItems = requestBody.items as CartItem[];
     console.log("Cart items:", cartItems);
 
     // Validate cart items
