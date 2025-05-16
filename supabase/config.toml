@@ -1,11 +1,21 @@
 
-project_id = "btrqtckxwvqkotnpyhgo"
+# Supabase Project Configuration
 
-[functions.fatsecret]
-verify_jwt = false
+# The project_id is used to identify your project locally and on the Supabase Platform.
+project_id = "btrqtckxwvqkotnpyhgo" # do not modify
 
-[auth.external.google]
-enabled = true
-client_id = "enter-your-actual-google-client-id-here"
-secret = "enter-your-actual-google-client-secret-here"
+# You can define settings for specific Edge Functions.
+# The key is the name of the Edge Function, which is also the path to the
+# function's entrypoint file (relative to the supabase/functions directory).
 
+[functions.hello-world]
+# auth_level can be "anon" (default) or "user"
+# auth_level = "user"
+# entrypoint = "./supabase/functions/hello-world/index.ts"
+# import_map = "./supabase/functions/import_map.json" # default
+# timeout_ms = 3000 # default
+# verify_jwt = true # default
+
+[functions.create-checkout-session]
+verify_jwt = true # Requires user to be authenticated
+# entrypoint and import_map will use defaults if not specified

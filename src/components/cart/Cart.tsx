@@ -1,6 +1,9 @@
-import React from 'react';
-import { ShoppingCart, Minus, Plus, X } from 'lucide-react';
+
+import React, { useState } from 'react';
+import { ShoppingCart, Minus, Plus, X, Loader2 } from 'lucide-react';
 import { useCart } from '../../contexts/CartContext';
+import { supabase } from '../../integrations/supabase/client'; // Import Supabase client
+import { toast } from 'react-toastify'; // For notifications
 
 interface CartProps {
   isOpen: boolean;
@@ -8,9 +11,60 @@ interface CartProps {
 }
 
 const Cart: React.FC<CartProps> = ({ isOpen, onClose }) => {
-  const { items, removeFromCart, updateQuantity, total, itemCount } = useCart();
+  const { items, removeFromCart, updateQuantity, total, itemCount, clearCart } = useCart();
+  const [isLoading, setIsLoading] = useState(false);
 
   if (!isOpen) return null;
+
+  const handleCheckout = async () => {
+    setIsLoading(true);
+    if (items.length === 0) {
+      toast.error("Your cart is empty.");
+      setIsLoading(false);
+      return;
+    }
+
+    // Prepare items for the edge function
+    const cartDetails = {
+      items: items.map(item => ({
+        supplement: {
+          id: item.supplement.id,
+          name: item.supplement.name,
+          price: item.supplement.price,
+          image: item.supplement.image, // Pass image URL
+        },
+        quantity: item.quantity,
+      })),
+    };
+
+    try {
+      const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+        body: cartDetails,
+      });
+
+      if (error) {
+        console.error("Error invoking create-checkout-session:", error);
+        toast.error(`Checkout failed: ${error.message}`);
+        setIsLoading(false);
+        return;
+      }
+
+      if (data && data.url) {
+        // Optionally clear cart after successful session creation, or wait until payment success confirmation
+        // clearCart(); // Example: clear cart now
+        window.location.href = data.url; // Redirect to Stripe Checkout
+      } else {
+        console.error("No session URL returned from function:", data);
+        toast.error("Checkout failed: Could not retrieve payment session.");
+        setIsLoading(false);
+      }
+    } catch (e: any) {
+      console.error("Exception during checkout:", e);
+      toast.error(`Checkout failed: ${e.message || "An unexpected error occurred."}`);
+      setIsLoading(false);
+    }
+    // setIsLoading(false); // This might not be reached if redirection happens
+  };
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden">
@@ -47,7 +101,7 @@ const Cart: React.FC<CartProps> = ({ isOpen, onClose }) => {
                     >
                       <div className="flex items-center space-x-4">
                         <img
-                          src={item.supplement.image}
+                          src={item.supplement.image || '/placeholder-supplement.jpg'}
                           alt={item.supplement.name}
                           className="h-16 w-16 rounded-md object-cover"
                         />
@@ -65,7 +119,8 @@ const Cart: React.FC<CartProps> = ({ isOpen, onClose }) => {
                         <div className="flex items-center space-x-2">
                           <button
                             onClick={() => updateQuantity(item.supplement.id, item.quantity - 1)}
-                            className="p-1 text-gray-400 hover:text-gray-500"
+                            className="p-1 text-gray-400 hover:text-gray-500 disabled:opacity-50"
+                            disabled={item.quantity <= 1}
                           >
                             <Minus className="h-4 w-4" />
                           </button>
@@ -99,10 +154,24 @@ const Cart: React.FC<CartProps> = ({ isOpen, onClose }) => {
                 </p>
                 <div className="mt-6">
                   <button
-                    className="w-full bg-blue-600 px-6 py-3 text-base font-medium text-white shadow-sm hover:bg-blue-700 rounded-lg"
+                    onClick={handleCheckout}
+                    disabled={isLoading || items.length === 0}
+                    className="w-full flex items-center justify-center bg-blue-600 px-6 py-3 text-base font-medium text-white shadow-sm hover:bg-blue-700 rounded-lg disabled:opacity-70 disabled:cursor-not-allowed"
                   >
-                    Checkout
+                    {isLoading ? (
+                      <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                    ) : null}
+                    {isLoading ? 'Processing...' : 'Checkout'}
                   </button>
+                </div>
+                <div className="mt-4 text-center">
+                    <button
+                        onClick={clearCart}
+                        className="text-sm text-gray-500 hover:text-gray-700"
+                        disabled={items.length === 0}
+                    >
+                        Clear Cart
+                    </button>
                 </div>
               </div>
             </>
@@ -113,4 +182,4 @@ const Cart: React.FC<CartProps> = ({ isOpen, onClose }) => {
   );
 };
 
-export default Cart; 
+export default Cart;
