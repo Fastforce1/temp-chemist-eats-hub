@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import type { Supplement } from '../types';
 
 interface CartItem {
@@ -16,12 +16,33 @@ interface CartContextType {
   itemCount: number;
 }
 
+const CART_STORAGE_KEY = 'nutrition-chemist-cart';
+
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [items, setItems] = useState<CartItem[]>([]);
+  // Initialize state from localStorage if available
+  const [items, setItems] = useState<CartItem[]>(() => {
+    try {
+      const savedCart = localStorage.getItem(CART_STORAGE_KEY);
+      return savedCart ? JSON.parse(savedCart) : [];
+    } catch (error) {
+      console.error('Error loading cart from localStorage:', error);
+      return [];
+    }
+  });
+
+  // Save to localStorage whenever cart changes
+  useEffect(() => {
+    try {
+      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
+    } catch (error) {
+      console.error('Error saving cart to localStorage:', error);
+    }
+  }, [items]);
 
   const addToCart = useCallback((supplement: Supplement, quantity: number = 1) => {
+    console.log('Adding to cart:', { supplement, quantity });
     setItems(currentItems => {
       const existingItem = currentItems.find(item => item.supplement.id === supplement.id);
       
@@ -38,6 +59,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const removeFromCart = useCallback((supplementId: string) => {
+    console.log('Removing from cart:', supplementId);
     setItems(currentItems => 
       currentItems.filter(item => item.supplement.id !== supplementId)
     );
@@ -46,6 +68,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateQuantity = useCallback((supplementId: string, quantity: number) => {
     if (quantity < 1) return;
     
+    console.log('Updating quantity:', { supplementId, quantity });
     setItems(currentItems =>
       currentItems.map(item =>
         item.supplement.id === supplementId
@@ -56,6 +79,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const clearCart = useCallback(() => {
+    console.log('Clearing cart');
     setItems([]);
   }, []);
 

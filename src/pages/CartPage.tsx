@@ -62,28 +62,34 @@ const CartPage: React.FC = () => {
     console.log('Prepared cart details:', cartDetails);
     console.log('Sending checkout request to Supabase function...');
     
-    const { data, error } = await supabase.functions.invoke('create-checkout-session', {
-      body: cartDetails,
-      headers: {
-        Authorization: `Bearer ${session.access_token}`,
+    try {
+      const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+        body: cartDetails,
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        }
+      });
+
+      console.log('Received response:', { data, error });
+
+      if (error) {
+        console.error("Error invoking create-checkout-session:", error);
+        toast.error(`Checkout failed: ${error.message}`);
+        setIsLoading(false);
+        return;
       }
-    });
 
-    console.log('Received response:', { data, error });
-
-    if (error) {
-      console.error("Error invoking create-checkout-session:", error);
-      toast.error(`Checkout failed: ${error.message}`);
-      setIsLoading(false);
-      return;
-    }
-
-    if (data?.url) {
-      console.log('Redirecting to Stripe checkout:', data.url);
-      window.location.href = data.url;
-    } else {
-      console.error("No session URL returned:", data);
-      toast.error("Checkout failed: Could not retrieve payment session.");
+      if (data?.url) {
+        console.log('Redirecting to Stripe checkout:', data.url);
+        window.location.href = data.url;
+      } else {
+        console.error("No session URL returned:", data);
+        toast.error("Checkout failed: Could not retrieve payment session.");
+        setIsLoading(false);
+      }
+    } catch (error: any) {
+      console.error("Exception during checkout:", error);
+      toast.error(`Checkout failed: ${error.message || "An unexpected error occurred"}`);
       setIsLoading(false);
     }
   };
