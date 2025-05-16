@@ -108,7 +108,9 @@ export const handler = async (req: Request): Promise<Response> => {
     // Get user info if authenticated
     let userId = 'guest';
     const authHeader = req.headers.get('Authorization');
-    if (authHeader) {
+    
+    // Only initialize Supabase client and verify auth if we have an auth header
+    if (authHeader?.startsWith('Bearer ')) {
       try {
         const supabase = createClient(
           getEnvVar("SUPABASE_URL"),
@@ -117,8 +119,12 @@ export const handler = async (req: Request): Promise<Response> => {
             global: { headers: { Authorization: authHeader } },
           }
         );
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        
+        if (authError) {
+          console.warn("⚠️ Auth verification failed:", authError.message);
+          // Continue as guest if auth fails
+        } else if (user) {
           userId = user.id;
           console.log("✅ Authenticated user:", userId);
         }
@@ -127,7 +133,7 @@ export const handler = async (req: Request): Promise<Response> => {
         // Continue as guest if auth fails
       }
     } else {
-      console.log("👥 Processing as guest checkout");
+      console.log("👥 Processing as guest checkout - no auth header");
     }
 
     // Parse and validate request body
