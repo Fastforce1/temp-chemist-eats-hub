@@ -79,13 +79,13 @@ serve(async (req) => {
 
     const lineItems = cartItems.map((item: any) => ({
       price_data: {
-        currency: "usd",
+        currency: "gbp",
         product_data: {
-          name: item.name,
-          images: [item.image],
-          description: item.description,
+          name: item.supplement.name,
+          images: item.supplement.image ? [item.supplement.image] : undefined,
+          description: item.supplement.description || undefined,
         },
-        unit_amount: item.price * 100,
+        unit_amount: Math.round(item.supplement.price * 100),
       },
       quantity: item.quantity,
     }));
@@ -95,9 +95,12 @@ serve(async (req) => {
       payment_method_types: ["card"],
       mode: "payment",
       line_items: lineItems,
-      success_url: `${Deno.env.get("FRONTEND_URL")}/success`,
+      success_url: `${Deno.env.get("FRONTEND_URL")}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${Deno.env.get("FRONTEND_URL")}/cart`,
       customer: customerId,
+      metadata: {
+        user_id: user.id
+      }
     });
 
     console.log("✅ Session created:", session.id);

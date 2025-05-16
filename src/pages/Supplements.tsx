@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { Filter, Bell, ShoppingCart } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import SupplementCard from '../components/supplements/SupplementCard';
-import { useCart } from '../contexts/CartContext';
-import type { Supplement } from '../types';
-import { Head } from '../components/SEO/Head';
-import { OptimizedImage } from '../components/ui/OptimizedImage';
-import { generateProductStructuredData } from '../utils/structuredData';
+import { SupplementCard } from '@/components/supplements/SupplementCard';
+import { useCart } from '@/contexts/CartContext';
+import type { Supplement } from '@/types';
+import { Head } from '@/components/SEO/Head';
+import { OptimizedImage } from '@/components/ui/OptimizedImage';
+import { generateProductStructuredData } from '@/utils/structuredData';
 
 // Brand logo for all Nutrition Chemist products
 const BRAND_LOGO = '/images/nutrition-chemist-logo.svg';
@@ -194,9 +194,12 @@ const Supplements: React.FC = () => {
     }))
   };
 
-  const handleAddToCart = (supplement: Supplement, quantity: number) => {
-    console.log('Adding to cart:', supplement, 'quantity:', quantity);
-    addToCart(supplement, quantity);
+  const handleAddToCart = (supplement: Supplement) => {
+    console.log('Adding to cart:', supplement);
+    addToCart({
+      supplement,
+      quantity: 1
+    });
   };
 
   const categories = ['all', 'vitamins', 'minerals', 'herbs', 'amino-acids'];
@@ -307,7 +310,7 @@ const Supplements: React.FC = () => {
                       <span className="text-2xl font-bold text-gray-900">£{supplement.price.toFixed(2)}</span>
                     </div>
                     <button
-                      onClick={() => handleAddToCart(supplement, 1)}
+                      onClick={() => handleAddToCart(supplement)}
                       className="mt-4 w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
                     >
                       Add to Cart
