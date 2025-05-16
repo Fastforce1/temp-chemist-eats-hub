@@ -107,4 +107,5 @@ export const SupplementCard: React.FC<SupplementCardProps> = ({
         </div>
       </div>
     </div>
-  ); 
+  );
+}; 

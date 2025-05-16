@@ -114,34 +114,45 @@ serve(async (req) => {
 
       userId = user.id;
 
-      // Get or create Stripe customer
-      console.log("🔍 Checking for existing Stripe customer...");
-      const { data: customerData, error: customerError } = await supabaseClient
-        .from("profile")
-        .select("stripe_customer_id")
-        .eq("id", userId)
-        .single();
-
-      if (customerError && customerError.code !== "PGRST116") { // Ignore not found error
-        throw new Error("DB error: " + customerError.message);
-      }
-
-      customerId = customerData?.stripe_customer_id;
-
-      if (!customerId) {
-        console.log("🙋 Creating new Stripe customer...");
-        const customer = await stripe.customers.create({ email: user.email });
-        customerId = customer.id;
-
-        const { error: updateError } = await supabaseClient
+      try {
+        // Get or create Stripe customer
+        console.log("🔍 Checking for existing Stripe customer...");
+        const { data: customerData, error: customerError } = await supabaseClient
           .from("profile")
-          .update({ stripe_customer_id: customerId })
-          .eq("id", userId);
+          .select("stripe_customer_id")
+          .eq("id", userId)
+          .single();
 
-        if (updateError) {
-          console.error("❌ Failed to update customer ID in Supabase:", updateError.message);
-          throw new Error("Could not save Stripe customer ID.");
+        if (customerError && customerError.code !== "PGRST116") { // Ignore not found error
+          console.error("❌ DB error:", customerError.message);
+          // Continue without customer ID if there's a DB error
+        } else {
+          customerId = customerData?.stripe_customer_id;
         }
+
+        if (!customerId && user.email) {
+          console.log("🙋 Creating new Stripe customer...");
+          const customer = await stripe.customers.create({ email: user.email });
+          customerId = customer.id;
+
+          try {
+            const { error: updateError } = await supabaseClient
+              .from("profile")
+              .update({ stripe_customer_id: customerId })
+              .eq("id", userId);
+
+            if (updateError) {
+              console.error("❌ Failed to update customer ID in Supabase:", updateError.message);
+              // Continue without saving customer ID if there's a DB error
+            }
+          } catch (error) {
+            console.error("❌ Error updating profile:", error);
+            // Continue without saving customer ID
+          }
+        }
+      } catch (error) {
+        console.error("❌ Error handling customer:", error);
+        // Continue without customer ID
       }
     } else if (ALLOW_GUEST_CHECKOUT) {
       // Generate temporary guest ID
