@@ -1,9 +1,11 @@
-import React from 'react';
+
+// Removed React import as it's not directly used with modern JSX transform
 import { Routes, Route, Navigate } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Elements } from '@stripe/react-stripe-js';
-import { HelmetProvider } from 'react-helmet-async'; // Corrected import
+import ReactHelmetAsync from 'react-helmet-async'; // Corrected import
+const { HelmetProvider } = ReactHelmetAsync;
 import { AuthProvider } from './contexts/AuthContext';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -36,7 +38,7 @@ import UserProfile from './pages/UserProfile';
 import Settings from './pages/Settings';
 
 // Auth
-import ProtectedRoute from './components/auth/ProtectedRoute'; // Assuming ProtectedRoute expects children
+import ProtectedRoute from './components/auth/ProtectedRoute';
 
 // Initialize Stripe
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
@@ -66,71 +68,71 @@ function App() {
                 </Route>
 
                 {/* Protected Dashboard Routes with DashboardLayout */}
-                <Route 
-                  path="/dashboard" 
+                <Route
+                  path="/dashboard"
                   element={
                     <ProtectedRoute>
                       <DashboardLayout><Dashboard /></DashboardLayout>
                     </ProtectedRoute>
-                  } 
+                  }
                 />
-                <Route 
-                  path="/dashboard/meals" 
+                <Route
+                  path="/dashboard/meals"
                   element={
                     <ProtectedRoute>
                       <DashboardLayout><MealPlanner /></DashboardLayout>
                     </ProtectedRoute>
-                  } 
+                  }
                 />
-                <Route 
-                  path="/dashboard/log" 
+                <Route
+                  path="/dashboard/log"
                   element={
                     <ProtectedRoute>
                       <DashboardLayout><DailyLog /></DashboardLayout>
                     </ProtectedRoute>
-                  } 
+                  }
                 />
-                <Route 
-                  path="/dashboard/progress" 
+                <Route
+                  path="/dashboard/progress"
                   element={
                     <ProtectedRoute>
                       <DashboardLayout><Progress /></DashboardLayout>
                     </ProtectedRoute>
-                  } 
+                  }
                 />
-                <Route 
-                  path="/dashboard/goals" 
+                <Route
+                  path="/dashboard/goals"
                   element={
                     <ProtectedRoute>
                       <DashboardLayout><HealthGoals /></DashboardLayout>
                     </ProtectedRoute>
-                  } 
+                  }
                 />
-                <Route 
-                  path="/dashboard/saved-recipes" 
+                <Route
+                  path="/dashboard/saved-recipes"
                   element={
                     <ProtectedRoute>
                       <DashboardLayout><SavedRecipes /></DashboardLayout>
                     </ProtectedRoute>
-                  } 
+                  }
                 />
-                <Route 
-                  path="/dashboard/profile" 
+                <Route
+                  path="/dashboard/profile"
                   element={
                     <ProtectedRoute>
                       <DashboardLayout><UserProfile /></DashboardLayout>
                     </ProtectedRoute>
-                  } 
+                  }
                 />
-                <Route 
-                  path="/dashboard/settings" 
+                <Route
+                  path="/dashboard/settings"
                   element={
                     <ProtectedRoute>
                       <DashboardLayout><Settings /></DashboardLayout>
                     </ProtectedRoute>
-                  } 
+                  }
                 />
-                
+
                 {/* Fallback for any other route */}
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>

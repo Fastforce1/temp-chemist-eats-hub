@@ -1,16 +1,14 @@
 import React from 'react';
-import { useStripe, useElements, CardElement } from '@stripe/react-stripe-js'; // Corrected import
+import { useStripe, useElements, CardElement } from '@stripe/react-stripe-js';
 
 interface StripeCheckoutButtonProps {
   amount: number; // Amount in smallest currency unit (e.g., pence/cents)
-  currency: string; // e.g., 'gbp', 'usd'
   onSuccessfulCheckout: (paymentMethodId: string) => void;
   disabled?: boolean;
 }
 
 const StripeCheckoutButton: React.FC<StripeCheckoutButtonProps> = ({
   amount,
-  currency,
   onSuccessfulCheckout,
   disabled = false,
 }) => {

@@ -1,5 +1,5 @@
-import React from 'react';
-import { Helmet } from 'react-helmet-async'; // Corrected import
+import ReactHelmetAsync from 'react-helmet-async'; // Corrected import
+const { Helmet } = ReactHelmetAsync;
 
 interface SEOMetadataProps {
   title?: string;

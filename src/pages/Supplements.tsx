@@ -1,16 +1,15 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-// import SupplementCard from '@/components/supplements/SupplementCard'; // Removed as unused
-import { Head } from '@/components/SEO/Head';
-import SEOMetadata from '@/components/SEOMetadata'; // Assuming this is the correct path
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
+import { Head } from '../../components/SEO/Head';
+import SEOMetadata from '../../components/SEOMetadata';
+import { Input } from "../../components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
+import { Button } from "../../components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { AlertCircle, Info, Search, ShoppingCart, X } from 'lucide-react';
-import { useCart } from '@/contexts/CartContext'; // Assuming CartContext exists
+import { useCart } from '../../contexts/CartContext';
 import { toast } from 'react-toastify';
-import OptimizedImage from '@/components/ui/OptimizedImage'; // Assuming OptimizedImage component exists
+import OptimizedImage from '../../components/ui/OptimizedImage';
 
 interface Supplement {
   id: string;
@@ -21,7 +20,7 @@ interface Supplement {
   description: string;
   ingredients: string[];
   dosage: string;
-  image?: string; // Made image optional as per previous context
+  image?: string;
   rating?: number;
   stock: number;
   tags?: string[];
@@ -97,10 +96,10 @@ const fetchSupplements = async (): Promise<Supplement[]> => {
 
 const SupplementsPage: React.FC = () => {
   const { data: supplements, isLoading, error } = useQuery({
-    queryKey: ['supplements'], 
+    queryKey: ['supplements'],
     queryFn: fetchSupplements
   });
-  const { addItem, cart } = useCart ? useCart() : { addItem: () => {}, cart: [] }; // Defensive check for useCart
+  const { addItem } = useCart ? useCart() : { addItem: () => {} };
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -155,7 +154,7 @@ const SupplementsPage: React.FC = () => {
   const handleCloseModal = () => {
     setSelectedSupplement(null);
   };
-  
+
   const handleAddToCart = () => {
     if (selectedSupplement && addItem) {
       addItem(selectedSupplement, quantity);
@@ -179,20 +178,20 @@ const SupplementsPage: React.FC = () => {
     </div>
   );
 
-  const defaultOgImage = '/images/default-og.jpg'; // Define a default image URL
+  const defaultOgImage = '/images/default-og.jpg';
 
   return (
     <>
       <Head
         title="Supplements Store"
         description="Browse our wide range of high-quality health supplements."
-        ogImage={defaultOgImage} // Use a general OG image for the main page
+        ogImage={defaultOgImage}
       />
       <SEOMetadata
         title="Supplements | ChemistEats Hub"
         description="Find and compare top-quality health supplements. Vitamins, minerals, probiotics, and more."
         keywords="supplements, vitamins, minerals, health products, nutrition"
-        ogImage={defaultOgImage} // Use a general OG image
+        ogImage={defaultOgImage}
       />
       <div className="container mx-auto px-4 py-8">
         <header className="mb-8 text-center">
@@ -200,7 +199,6 @@ const SupplementsPage: React.FC = () => {
           <p className="text-lg text-gray-600">Find the best products to support your health and wellness goals.</p>
         </header>
 
-        {/* Filters and Search */}
         <div className="mb-8 p-6 bg-white shadow-lg rounded-lg grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
           <div>
             <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-1">Search</label>
@@ -246,10 +244,9 @@ const SupplementsPage: React.FC = () => {
           </div>
         </div>
         
-        {/* Supplements Grid */}
-        {filteredAndSortedSupplements && filteredAndSortedSupplements.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-            {filteredAndSortedSupplements.map(supplement => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+          {filteredAndSortedSupplements && filteredAndSortedSupplements.length > 0 ? (
+            filteredAndSortedSupplements.map(supplement => (
               <motion.div
                 key={supplement.id}
                 className="bg-white shadow-xl rounded-lg overflow-hidden flex flex-col hover:shadow-2xl transition-shadow duration-300"
@@ -291,17 +288,16 @@ const SupplementsPage: React.FC = () => {
                   </Button>
                 </div>
               </motion.div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-12">
-            <Search className="mx-auto h-16 w-16 text-gray-400 mb-4" />
-            <p className="text-xl text-gray-600">No supplements found matching your criteria.</p>
-            <p className="text-gray-500">Try adjusting your search or filters.</p>
-          </div>
-        )}
+            ))
+          ) : (
+            <div className="text-center py-12">
+              <Search className="mx-auto h-16 w-16 text-gray-400 mb-4" />
+              <p className="text-xl text-gray-600">No supplements found matching your criteria.</p>
+              <p className="text-gray-500">Try adjusting your search or filters.</p>
+            </div>
+          )}
+        </div>
 
-        {/* Modal for Supplement Details */}
         <AnimatePresence>
           {selectedSupplement && (
             <motion.div
@@ -309,14 +305,13 @@ const SupplementsPage: React.FC = () => {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50"
-              onClick={handleCloseModal} // Close on backdrop click
+              onClick={handleCloseModal}
             >
-               {/* SEO for Modal Content */}
               <Head
                 title={`${selectedSupplement.name} - Supplement Details`}
                 description={selectedSupplement.description}
-                ogImage={selectedSupplement.image || defaultOgImage} // Fallback for ogImage
-                canonicalUrl={`https://yourwebsite.com/supplements/${selectedSupplement.id}`} // Example canonical
+                ogImage={selectedSupplement.image || defaultOgImage}
+                canonicalUrl={`https://yourwebsite.com/supplements/${selectedSupplement.id}`}
               />
               <motion.div
                 initial={{ scale: 0.9, y: 20 }}
@@ -324,7 +319,7 @@ const SupplementsPage: React.FC = () => {
                 exit={{ scale: 0.9, y: 20, opacity: 0 }}
                 transition={{ type: "spring", stiffness: 300, damping: 30 }}
                 className="bg-white p-8 rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto relative"
-                onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside modal
+                onClick={(e: React.MouseEvent) => e.stopPropagation()}
               >
                 <button onClick={handleCloseModal} className="absolute top-4 right-4 text-gray-500 hover:text-gray-800 z-10">
                   <X size={28} />

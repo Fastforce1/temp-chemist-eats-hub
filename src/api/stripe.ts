@@ -1,10 +1,11 @@
+
 // @deno-types="npm:@types/express@^4.17"
 import express, { Request, Response } from 'express';
 import Stripe from 'stripe';
 
 // Initialize Stripe with your secret key and specific API version
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2024-04-10", // Using a recent, valid version. The error suggested "2025-04-30.basil" which seems like a future/beta version. Let's use a stable recent one. If "2025-04-30.basil" is indeed required for a specific feature, it can be changed.
+  apiVersion: "2025-04-30.basil", // Corrected API version to match type definition
   // httpClient: Stripe.createFetchHttpClient(), // For Deno
 });
 
@@ -12,36 +13,39 @@ const app = express();
 app.use(express.json());
 
 // Endpoint to create a checkout session
-app.post('/create-checkout-session', async (req: Request, res: Response) => {
+app.post('/create-checkout-session', async (req: Request, res: Response): Promise<void> => {
   const { items, userEmail, userId, returnUrl } = req.body;
 
   if (!items || !Array.isArray(items) || items.length === 0) {
-    return res.status(400).json({ error: 'Missing or invalid items array' });
+    res.status(400).json({ error: 'Missing or invalid items array' });
+    return;
   }
   if (!returnUrl) {
-    return res.status(400).json({ error: 'Missing returnUrl' });
+    res.status(400).json({ error: 'Missing returnUrl' });
+    return;
   }
 
-  const line_items = items.map((item: any) => {
-    if (!item.name || !item.price || !item.quantity) {
-      throw new Error('Invalid item structure');
-    }
-    return {
-      price_data: {
-        currency: 'gbp',
-        product_data: {
-          name: item.name,
-          images: item.image ? [item.image] : undefined,
-        },
-        unit_amount: Math.round(item.price * 100), // Price in pence/cents
-      },
-      quantity: item.quantity,
-    };
-  });
-
-  const customer_email = userEmail || undefined; // Optional, Stripe can collect it
-
   try {
+    const line_items = items.map((item: any) => {
+      if (!item.name || !item.price || !item.quantity) {
+        // This error should be caught by the try...catch block
+        throw new Error('Invalid item structure');
+      }
+      return {
+        price_data: {
+          currency: 'gbp',
+          product_data: {
+            name: item.name,
+            images: item.image ? [item.image] : undefined,
+          },
+          unit_amount: Math.round(item.price * 100), // Price in pence/cents
+        },
+        quantity: item.quantity,
+      };
+    });
+
+    const customer_email = userEmail || undefined; // Optional, Stripe can collect it
+
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items,
@@ -54,20 +58,18 @@ app.post('/create-checkout-session', async (req: Request, res: Response) => {
         cartItems: JSON.stringify(items.map((item: any) => ({ id: item.id, quantity: item.quantity, name: item.name }))), // Storing simplified cart for metadata
       },
     });
-
-    // Optionally: Here you could create a 'pending' order in your database
-    // using the session.id and other details before redirecting.
-
     res.json({ sessionId: session.id, url: session.url });
   } catch (error) {
     console.error('Stripe session creation failed:', error);
-    res.status(500).json({ error: (error as Error).message });
+    // Ensure error is an instance of Error to access message property
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+    res.status(500).json({ error: errorMessage });
   }
 });
 
 
 // Endpoint for Stripe webhook (Example, implement actual event handling)
-app.post('/webhook', express.raw({type: 'application/json'}), async (req: Request, res: Response) => {
+app.post('/webhook', express.raw({type: 'application/json'}), async (req: Request, res: Response): Promise<void> => {
   const sig = req.headers['stripe-signature'] as string;
   const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET!;
   let event: Stripe.Event;
@@ -76,7 +78,8 @@ app.post('/webhook', express.raw({type: 'application/json'}), async (req: Reques
     event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
   } catch (err) {
     console.log(`Webhook signature verification failed.`, (err as Error).message);
-    return res.sendStatus(400);
+    res.sendStatus(400);
+    return;
   }
 
   // Handle the event
