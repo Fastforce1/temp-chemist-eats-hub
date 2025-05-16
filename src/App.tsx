@@ -48,14 +48,14 @@ const App: React.FC = () => {
 
   const content = (
     <HelmetProvider>
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <CartProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <CartProvider>
             <Elements stripe={stripePromise}>
-              <Routes>
-                {/* Public routes */}
-                <Route path="/login" element={<Login />} />
-                <Route path="/signup" element={<div>Signup Page</div>} />
+          <Routes>
+            {/* Public routes */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<div>Signup Page</div>} />
                 <Route path="/payment-success" element={
                   <React.Suspense fallback={<LoadingSpinner />}>
                     <PaymentSuccess />
@@ -66,8 +66,8 @@ const App: React.FC = () => {
                     <PaymentCancel />
                   </React.Suspense>
                 } />
-                
-                {/* Main Layout */}
+            
+            {/* Main Layout */}
                 <Route element={<MainLayout />}>
                   <Route path="/" element={<Home />} />
                   <Route path="/search" element={<RecipeSearch />} />
@@ -83,59 +83,59 @@ const App: React.FC = () => {
                     </React.Suspense>
                   } />
                   <Route path="/contact" element={<Contact />} />
-                  
+              
                   {/* Protected routes */}
                   <Route element={<ProtectedRoute />}>
                     <Route path="/dashboard" element={<DashboardLayout />}>
-                      <Route index element={<Dashboard />} />
-                      <Route path="meals" element={
-                        <React.Suspense fallback={<LoadingSpinner />}>
-                          <MealPlanner />
-                        </React.Suspense>
-                      } />
+                <Route index element={<Dashboard />} />
+                <Route path="meals" element={
+                  <React.Suspense fallback={<LoadingSpinner />}>
+                    <MealPlanner />
+                  </React.Suspense>
+                } />
                       <Route path="goals" element={
-                        <React.Suspense fallback={<LoadingSpinner />}>
+                  <React.Suspense fallback={<LoadingSpinner />}>
                           <HealthGoals />
-                        </React.Suspense>
-                      } />
-                      <Route path="progress" element={
-                        <React.Suspense fallback={<LoadingSpinner />}>
-                          <Progress />
-                        </React.Suspense>
-                      } />
+                  </React.Suspense>
+                } />
+                <Route path="progress" element={
+                  <React.Suspense fallback={<LoadingSpinner />}>
+                    <Progress />
+                  </React.Suspense>
+                } />
                       <Route path="daily-log" element={
-                        <React.Suspense fallback={<LoadingSpinner />}>
-                          <DailyLog />
-                        </React.Suspense>
-                      } />
-                      <Route path="learn" element={
-                        <React.Suspense fallback={<LoadingSpinner />}>
-                          <Learn />
-                        </React.Suspense>
-                      } />
-                      <Route path="settings" element={
-                        <React.Suspense fallback={<LoadingSpinner />}>
-                          <Settings />
-                        </React.Suspense>
-                      } />
-                      <Route path="profile" element={
-                        <React.Suspense fallback={<LoadingSpinner />}>
-                          <UserProfile />
-                        </React.Suspense>
-                      } />
+                  <React.Suspense fallback={<LoadingSpinner />}>
+                    <DailyLog />
+                  </React.Suspense>
+                } />
+                <Route path="learn" element={
+                  <React.Suspense fallback={<LoadingSpinner />}>
+                    <Learn />
+                  </React.Suspense>
+                } />
+                <Route path="settings" element={
+                  <React.Suspense fallback={<LoadingSpinner />}>
+                    <Settings />
+                  </React.Suspense>
+                } />
+                <Route path="profile" element={
+                  <React.Suspense fallback={<LoadingSpinner />}>
+                    <UserProfile />
+                  </React.Suspense>
+                } />
                     </Route>
                     <Route path="/saved" element={<SavedRecipes />} />
-                  </Route>
-                </Route>
+              </Route>
+            </Route>
 
                 {/* Fallback route */}
                 <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-              {isClient && <ToastContainer position="bottom-right" />}
+          </Routes>
+          {isClient && <ToastContainer position="bottom-right" />}
             </Elements>
-          </CartProvider>
-        </AuthProvider>
-      </QueryClientProvider>
+        </CartProvider>
+      </AuthProvider>
+    </QueryClientProvider>
     </HelmetProvider>
   );
 

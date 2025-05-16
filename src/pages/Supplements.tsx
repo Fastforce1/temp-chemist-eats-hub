@@ -196,7 +196,10 @@ const Supplements: React.FC = () => {
 
   const handleAddToCart = (supplement: Supplement) => {
     console.log('Adding to cart:', supplement);
-    addToCart(supplement, 1);
+    addToCart({
+      supplement,
+      quantity: 1
+    });
   };
 
   const categories = ['all', 'vitamins', 'minerals', 'herbs', 'amino-acids'];
