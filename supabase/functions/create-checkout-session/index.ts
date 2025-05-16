@@ -107,6 +107,41 @@ export const handler = async (req: Request): Promise<Response> => {
       apiVersion: "2022-11-15",
     });
 
+    // Handle user authentication
+    let userId = 'guest';
+    const authHeader = req.headers.get('Authorization');
+
+    // Only attempt authentication if there's an auth header and guest checkout is disabled
+    if (authHeader && !ALLOW_GUEST_CHECKOUT) {
+      try {
+        const supabase = createClient(
+          getEnvVar("SUPABASE_URL"),
+          getEnvVar("SUPABASE_ANON_KEY"),
+          {
+            global: { headers: { Authorization: authHeader } },
+          }
+        );
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          userId = user.id;
+          console.log("✅ Authenticated user:", userId);
+        } else {
+          console.warn("⚠️ Invalid auth token");
+          return errorResponse("Authentication required", 401);
+        }
+      } catch (error) {
+        console.error("❌ Auth error:", error);
+        return errorResponse("Authentication failed", 401);
+      }
+    } else {
+      if (ALLOW_GUEST_CHECKOUT) {
+        console.log("👥 Processing as guest checkout");
+      } else {
+        console.warn("⚠️ Authentication required");
+        return errorResponse("Authentication required", 401);
+      }
+    }
+
     // Parse and validate request body
     let body;
     try {
@@ -117,39 +152,6 @@ export const handler = async (req: Request): Promise<Response> => {
     }
 
     console.log("🛒 Cart body:", body);
-
-    // Handle user identification
-    let userId: string;
-    const authHeader = req.headers.get('Authorization');
-
-    if (authHeader?.startsWith('Bearer ')) {
-      try {
-        const supabase = createClient(
-          getEnvVar("SUPABASE_URL"),
-          getEnvVar("SUPABASE_ANON_KEY"),
-          {
-            global: { headers: { Authorization: authHeader } },
-          }
-        );
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user?.id) {
-          userId = user.id;
-          console.log("✅ Authenticated user:", userId);
-        } else {
-          // Invalid auth token, but we'll still allow checkout as guest
-          userId = crypto.randomUUID();
-          console.warn("⚠️ Invalid auth token, proceeding as guest:", userId);
-        }
-      } catch (error) {
-        // Auth failed, but we'll still allow checkout as guest
-        userId = crypto.randomUUID();
-        console.warn("⚠️ Auth error, proceeding as guest:", userId, error);
-      }
-    } else {
-      // No auth token, generate a temporary guest ID
-      userId = crypto.randomUUID();
-      console.log("👥 Processing as guest:", userId);
-    }
 
     const cartItems = body.items;
     if (!cartItems || !Array.isArray(cartItems)) {
