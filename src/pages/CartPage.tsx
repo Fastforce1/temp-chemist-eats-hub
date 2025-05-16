@@ -68,7 +68,8 @@ const CartPage: React.FC = () => {
 
       const { data, error } = await supabase.functions.invoke('create-checkout-session', {
         body: cartDetails,
-        headers
+        headers,
+        method: 'POST'
       });
 
       console.log('Received response:', { data, error });

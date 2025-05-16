@@ -1,8 +1,63 @@
-import { serve } from "https://deno.land/std@0.131.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import Stripe from "https://esm.sh/stripe@12.1.0";
+// @deno-types="npm:@types/stripe@12.1.0"
+import Stripe from "npm:stripe@12.1.0";
+import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.0";
+
+// Type declarations for Deno
+declare global {
+  interface Deno {
+    env: {
+      get(key: string): string | undefined;
+    };
+  }
+}
 
 console.log("🚀 Function deployed and ready!");
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
+// Validate required environment variables
+const requiredEnvVars = [
+  "STRIPE_SECRET_KEY",
+  "SUPABASE_URL",
+  "SUPABASE_ANON_KEY",
+  "FRONTEND_URL"
+] as const;
+
+for (const envVar of requiredEnvVars) {
+  if (!Deno.env.get(envVar)) {
+    console.error(`❌ Missing required environment variable: ${envVar}`);
+    throw new Error(`Missing required environment variable: ${envVar}`);
+  }
+}
+
+// Helper function to get typed environment variables
+const getEnvVar = (key: typeof requiredEnvVars[number]): string => {
+  const value = Deno.env.get(key);
+  if (!value) {
+    throw new Error(`Missing required environment variable: ${key}`);
+  }
+  return value;
+};
+
+// Helper function to send error responses
+const errorResponse = (message: string, status: number = 400) => {
+  return new Response(
+    JSON.stringify({ 
+      error: message,
+      status,
+      timestamp: new Date().toISOString()
+    }),
+    {
+      status,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    }
+  );
+};
 
 // Map our supplement IDs to Stripe Product IDs
 const PRODUCT_ID_MAP: Record<string, string> = {
@@ -17,21 +72,36 @@ const PRODUCT_ID_MAP: Record<string, string> = {
 };
 
 export const handler = async (req: Request): Promise<Response> => {
-  const corsHeaders = {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-  };
+  // Log incoming request details
+  console.log(`📥 ${req.method} request to ${new URL(req.url).pathname}`);
 
+  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  // Reject non-POST requests
+  if (req.method !== "POST") {
+    console.warn(`⚠️ Rejected ${req.method} request`);
+    return errorResponse(
+      `Method ${req.method} not allowed. This endpoint only accepts POST requests.`,
+      405
+    );
+  }
+
+  // Validate Content-Type
+  const contentType = req.headers.get("content-type");
+  if (!contentType?.includes("application/json")) {
+    console.warn("⚠️ Invalid Content-Type:", contentType);
+    return errorResponse(
+      "Invalid Content-Type. Expected application/json",
+      415
+    );
   }
 
   try {
-    console.log("📥 Incoming request to create checkout session");
-
     // Initialize Stripe
-    const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, {
+    const stripe = new Stripe(getEnvVar("STRIPE_SECRET_KEY"), {
       apiVersion: "2022-11-15",
     });
 
@@ -41,8 +111,8 @@ export const handler = async (req: Request): Promise<Response> => {
     if (authHeader) {
       try {
         const supabase = createClient(
-          Deno.env.get("SUPABASE_URL")!,
-          Deno.env.get("SUPABASE_ANON_KEY")!,
+          getEnvVar("SUPABASE_URL"),
+          getEnvVar("SUPABASE_ANON_KEY"),
           {
             global: { headers: { Authorization: authHeader } },
           }
@@ -60,13 +130,26 @@ export const handler = async (req: Request): Promise<Response> => {
       console.log("👥 Processing as guest checkout");
     }
 
-    console.log("📦 Reading request body...");
-    const body = await req.json();
+    // Parse and validate request body
+    let body;
+    try {
+      body = await req.json();
+    } catch (error) {
+      console.error("❌ Invalid JSON:", error);
+      return errorResponse("Invalid JSON payload", 400);
+    }
+
     console.log("🛒 Cart body:", body);
 
     const cartItems = body.items;
     if (!cartItems || !Array.isArray(cartItems)) {
-      throw new Error("Invalid cart items");
+      console.error("❌ Invalid cart structure:", cartItems);
+      return errorResponse("Invalid cart structure. Expected array of items.");
+    }
+
+    if (cartItems.length === 0) {
+      console.error("❌ Empty cart");
+      return errorResponse("Cart is empty");
     }
 
     const lineItems = cartItems.map((item: any) => {
@@ -90,8 +173,8 @@ export const handler = async (req: Request): Promise<Response> => {
       payment_method_types: ["card"],
       mode: "payment",
       line_items: lineItems,
-      success_url: `${Deno.env.get("FRONTEND_URL")}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${Deno.env.get("FRONTEND_URL")}/cart`,
+      success_url: `${getEnvVar("FRONTEND_URL")}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${getEnvVar("FRONTEND_URL")}/cart`,
       metadata: {
         user_id: userId
       }
@@ -108,10 +191,10 @@ export const handler = async (req: Request): Promise<Response> => {
       stack: error?.stack,
     });
 
-    return new Response(JSON.stringify({ error: error?.message || "Internal Server Error" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return errorResponse(
+      error?.message || "Internal Server Error",
+      error?.status || 500
+    );
   }
 };
 
