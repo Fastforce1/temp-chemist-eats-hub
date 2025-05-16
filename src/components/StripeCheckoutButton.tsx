@@ -1,77 +1,99 @@
-import { useState } from 'react';
-import { useStripe } from '@stripe/stripe-react-stripe-js';
-import { createCheckoutSession } from '../utils/stripe';
+import React from 'react';
+import { useStripe, useElements, CardElement } from '@stripe/react-stripe-js'; // Corrected import
 
 interface StripeCheckoutButtonProps {
-  priceId: string;
-  className?: string;
-  children?: React.ReactNode;
+  amount: number; // Amount in smallest currency unit (e.g., pence/cents)
+  currency: string; // e.g., 'gbp', 'usd'
+  onSuccessfulCheckout: (paymentMethodId: string) => void;
+  disabled?: boolean;
 }
 
-export default function StripeCheckoutButton({
-  priceId,
-  className = '',
-  children,
-}: StripeCheckoutButtonProps) {
+const StripeCheckoutButton: React.FC<StripeCheckoutButtonProps> = ({
+  amount,
+  currency,
+  onSuccessfulCheckout,
+  disabled = false,
+}) => {
   const stripe = useStripe();
-  const [loading, setLoading] = useState(false);
+  const elements = useElements();
 
-  const handleCheckout = async () => {
-    if (!stripe) {
-      console.error('Stripe has not been initialized');
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+
+    if (!stripe || !elements) {
+      // Stripe.js has not yet loaded.
+      // Make sure to disable form submission until Stripe.js has loaded.
+      console.log("Stripe.js has not loaded yet.");
       return;
     }
 
+    const cardElement = elements.getElement(CardElement);
+
+    if (!cardElement) {
+      console.error("CardElement not found");
+      return;
+    }
+
+    // For one-off payments, typically you'd create a PaymentIntent on your server
+    // and use the clientSecret here to confirm the card payment.
+    // This example focuses on tokenizing card details for a custom flow.
+    // For a full checkout flow, consider using Stripe Checkout (redirect) or Payment Element.
+
     try {
-      setLoading(true);
-      const sessionId = await createCheckoutSession(priceId);
-      
-      // Redirect to Stripe Checkout
-      const { error } = await stripe.redirectToCheckout({
-        sessionId,
+      // Create a PaymentMethod
+      const { error, paymentMethod } = await stripe.createPaymentMethod({
+        type: 'card',
+        card: cardElement,
+        // billing_details: { // Optional: collect billing details
+        //   name: 'Jenny Rosen',
+        //   email: 'jenny.rosen@example.com',
+        // },
       });
 
       if (error) {
-        console.error('Error redirecting to checkout:', error);
-        throw error;
+        console.error('[stripe error]', error);
+        // Show error to your customer (e.g., insufficient funds, card declined).
+        alert(error.message); // Replace with user-friendly error display
+      } else if (paymentMethod) {
+        console.log('[PaymentMethod]', paymentMethod);
+        // Send paymentMethod.id to your server to create a charge or save the card
+        onSuccessfulCheckout(paymentMethod.id);
       }
-    } catch (error) {
-      console.error('Error initiating checkout:', error);
-      // You might want to show an error message to the user here
-    } finally {
-      setLoading(false);
+    } catch (e) {
+      console.error('Error processing payment:', e);
+      alert('Payment processing failed.'); // Replace with user-friendly error display
     }
   };
 
   return (
-    <button
-      onClick={handleCheckout}
-      disabled={!stripe || loading}
-      className={`inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
-    >
-      {loading ? (
-        <svg
-          className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
-          xmlns="http://www.w3.org/2000/svg"
-          fill="none"
-          viewBox="0 0 24 24"
-        >
-          <circle
-            className="opacity-25"
-            cx="12"
-            cy="12"
-            r="10"
-            stroke="currentColor"
-            strokeWidth="4"
-          ></circle>
-          <path
-            className="opacity-75"
-            fill="currentColor"
-            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-          ></path>
-        </svg>
-      ) : null}
-      {children || 'Checkout'}
-    </button>
+    <form onSubmit={handleSubmit}>
+      <div className="p-4 border rounded-md bg-gray-50">
+        <CardElement 
+          options={{
+            style: {
+              base: {
+                fontSize: '16px',
+                color: '#424770',
+                '::placeholder': {
+                  color: '#aab7c4',
+                },
+              },
+              invalid: {
+                color: '#9e2146',
+              },
+            },
+          }}
+        />
+      </div>
+      <button 
+        type="submit" 
+        disabled={!stripe || disabled}
+        className="mt-4 w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 disabled:bg-gray-400"
+      >
+        Pay £{(amount / 100).toFixed(2)}
+      </button>
+    </form>
   );
-} 
+};
+
+export default StripeCheckoutButton;

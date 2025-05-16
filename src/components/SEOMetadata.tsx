@@ -1,7 +1,5 @@
-
-// import { Helmet } from 'react-helmet-async'; // Old import
-import ReactHelmetAsync from 'react-helmet-async'; // New import
-const { Helmet } = ReactHelmetAsync; // Destructure
+import React from 'react';
+import { Helmet } from 'react-helmet-async'; // Corrected import
 
 interface SEOMetadataProps {
   title?: string;
