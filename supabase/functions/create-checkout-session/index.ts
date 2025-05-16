@@ -20,12 +20,14 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+// Configuration
+const ALLOW_GUEST_CHECKOUT = true; // Flag to control guest checkout functionality
+
 // Validate required environment variables
 const requiredEnvVars = [
   "STRIPE_SECRET_KEY",
-  "SUPABASE_URL",
-  "SUPABASE_ANON_KEY",
-  "FRONTEND_URL"
+  "FRONTEND_URL",
+  ...(ALLOW_GUEST_CHECKOUT ? [] : ["SUPABASE_URL", "SUPABASE_ANON_KEY"]) // Only require Supabase env vars if guest checkout is disabled
 ] as const;
 
 for (const envVar of requiredEnvVars) {
@@ -105,6 +107,41 @@ export const handler = async (req: Request): Promise<Response> => {
       apiVersion: "2022-11-15",
     });
 
+    // Handle user authentication
+    let userId = 'guest';
+    const authHeader = req.headers.get('Authorization');
+
+    // Only attempt authentication if there's an auth header and guest checkout is disabled
+    if (authHeader && !ALLOW_GUEST_CHECKOUT) {
+      try {
+        const supabase = createClient(
+          getEnvVar("SUPABASE_URL"),
+          getEnvVar("SUPABASE_ANON_KEY"),
+          {
+            global: { headers: { Authorization: authHeader } },
+          }
+        );
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          userId = user.id;
+          console.log("✅ Authenticated user:", userId);
+        } else {
+          console.warn("⚠️ Invalid auth token");
+          return errorResponse("Authentication required", 401);
+        }
+      } catch (error) {
+        console.error("❌ Auth error:", error);
+        return errorResponse("Authentication failed", 401);
+      }
+    } else {
+      if (ALLOW_GUEST_CHECKOUT) {
+        console.log("👥 Processing as guest checkout");
+      } else {
+        console.warn("⚠️ Authentication required");
+        return errorResponse("Authentication required", 401);
+      }
+    }
+
     // Parse and validate request body
     let body;
     try {
@@ -115,10 +152,6 @@ export const handler = async (req: Request): Promise<Response> => {
     }
 
     console.log("🛒 Cart body:", body);
-
-    // Get user ID from request body or default to guest
-    const userId = body.userId || 'guest';
-    console.log(`👤 Processing checkout for user: ${userId}`);
 
     const cartItems = body.items;
     if (!cartItems || !Array.isArray(cartItems)) {
