@@ -1,547 +1,326 @@
-import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Head } from "../components/SEO/Head"; // Corrected path
-import SEOMetadata from "../components/SEOMetadata"; // Corrected path
-import { Input } from "../components/ui/input"; // Corrected path
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select"; // Corrected path
-import { Button } from "../components/ui/button"; // Corrected path
-import { motion, AnimatePresence } from "framer-motion";
-import { AlertCircle, Info, Search, ShoppingCart, X, Plus, Minus } from "lucide-react";
-import { useCart } from "../contexts/CartContext"; // Corrected path
-import { toast } from "react-toastify";
-import { OptimizedImage } from "../components/ui/OptimizedImage"; // Corrected path and named import
-import type { Supplement } from '../types'; // Assuming Supplement type is here
+import React, { useState } from 'react';
+import { Filter, Bell, ShoppingCart } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import SupplementCard from '../components/supplements/SupplementCard';
+import { useCart } from '../contexts/CartContext';
+import type { Supplement } from '../types';
+import { Head } from '../components/SEO/Head';
+import { OptimizedImage } from '../components/ui/OptimizedImage';
+import { generateProductStructuredData } from '../utils/structuredData';
 
-// Mock data for supplements
+// Brand logo for all Nutrition Chemist products
+const BRAND_LOGO = '/images/nutrition-chemist-logo.svg';
+
 const MOCK_SUPPLEMENTS: Supplement[] = [
   {
-    id: "1",
-    name: "Vitamin D3 5000 IU",
-    brand: "Pure Encapsulations",
-    category: "vitamins",
-    price: 24.99,
-    image: "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
-    description: "Vitamin D3 (cholecalciferol) is the most bioavailable form of vitamin D, essential for bone health and immune function.",
-    rating: 4.8,
-    benefits: ["Supports bone health", "Enhances immune function", "Promotes calcium absorption"],
-    ingredients: ["Vitamin D3 (cholecalciferol)", "Hypoallergenic plant fiber", "Vegetarian capsule"],
-    dosage: "1 capsule daily with a meal",
-    usageInstructions: "Take 1 capsule daily with a meal or as directed by a healthcare professional.",
-    warnings: ["Consult your doctor if pregnant or nursing", "Keep out of reach of children"],
-    tags: ["vitamin d", "immune support", "bone health"]
+    id: '1',
+    name: '65 Creatine Capsules',
+    brand: 'Nutrition Chemist',
+    description: 'High-quality creatine supplement for muscle strength and performance',
+    benefits: ['Muscle Strength', 'Exercise Performance', 'Recovery'],
+    dosage: '1500MG, 2 capsules daily',
+    price: 4.25,
+    image: BRAND_LOGO,
+    nutrients: {
+      calories: 0,
+      protein: 0,
+      carbs: 0,
+      fat: 0,
+      micronutrients: {
+        'Creatine Monohydrate': 1500
+      }
+    }
   },
   {
-    id: "2",
-    name: "Omega-3 Fish Oil",
-    brand: "Nordic Naturals",
-    category: "fatty acids",
-    price: 29.95,
-    image: "https://images.unsplash.com/photo-1559925393-8be0ec4767c8?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
-    description: "High-quality fish oil providing EPA and DHA omega-3 fatty acids for heart, brain, and joint health.",
-    rating: 4.7,
-    benefits: ["Supports cardiovascular health", "Promotes brain function", "Reduces inflammation"],
-    ingredients: ["Fish oil concentrate", "Gelatin", "Glycerin", "Purified water"],
-    dosage: "2 soft gels daily with food",
-    usageInstructions: "Take 2 soft gels daily with food or as directed by your healthcare professional.",
-    warnings: ["Contains fish derivatives", "Consult your doctor if on blood thinners"],
-    tags: ["omega-3", "fish oil", "heart health", "brain health"]
+    id: '2',
+    name: '90 Bovine Collagen Capsules',
+    brand: 'Nutrition Chemist',
+    description: 'Premium bovine collagen for skin, hair, and joint health',
+    benefits: ['Skin Health', 'Hair Strength', 'Joint Support'],
+    dosage: '1200MG, 2 capsules daily',
+    price: 9.75,
+    image: BRAND_LOGO,
+    nutrients: {
+      calories: 5,
+      protein: 1,
+      carbs: 0,
+      fat: 0,
+      micronutrients: {
+        'Collagen': 1200
+      }
+    }
   },
   {
-    id: "3",
-    name: "Magnesium Glycinate",
-    brand: "Thorne Research",
-    category: "minerals",
-    price: 19.99,
-    image: "https://images.unsplash.com/photo-1471864190281-a93a3070b6de?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
-    description: "Highly absorbable magnesium chelate for optimal muscle and nervous system support.",
-    rating: 4.6,
-    benefits: ["Supports muscle relaxation", "Promotes sleep quality", "Aids in stress management"],
-    ingredients: ["Magnesium (as magnesium glycinate)", "Vegetarian capsule"],
-    dosage: "1-3 capsules daily with meals",
-    usageInstructions: "Take 1-3 capsules daily with meals or as recommended by your healthcare professional.",
-    warnings: ["May cause loose stools at high doses", "Consult your doctor if you have kidney disease"],
-    tags: ["magnesium", "sleep support", "muscle relaxation"]
+    id: '3',
+    name: '90 Magnesium 3-in-1',
+    brand: 'Nutrition Chemist',
+    description: 'Triple-form magnesium supplement for optimal absorption',
+    benefits: ['Muscle Function', 'Bone Health', 'Energy Production'],
+    dosage: '1800MG, 2 capsules daily',
+    price: 7.65,
+    image: BRAND_LOGO,
+    nutrients: {
+      calories: 0,
+      protein: 0,
+      carbs: 0,
+      fat: 0,
+      micronutrients: {
+        'Magnesium': 1800
+      }
+    }
   },
   {
-    id: "4",
-    name: "Probiotics 50 Billion CFU",
-    brand: "Garden of Life",
-    category: "digestive health",
-    price: 39.99,
-    image: "https://images.unsplash.com/photo-1550989460-0adf9ea622e2?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
-    description: "High-potency, multi-strain probiotic formula to support digestive health and immune function.",
-    rating: 4.5,
-    benefits: ["Supports digestive balance", "Enhances immune function", "Promotes nutrient absorption"],
-    ingredients: ["50 billion CFU probiotic blend", "Organic prebiotic fiber", "Vegetarian capsule"],
-    dosage: "1 capsule daily",
-    usageInstructions: "Take 1 capsule daily with or without food. May be taken on an empty stomach.",
-    warnings: ["Keep refrigerated", "Consult your doctor if you have SIBO or immunocompromised"],
-    tags: ["probiotics", "gut health", "immune support", "digestive health"]
+    id: '4',
+    name: '65 Vitamin C Orange Flavour',
+    brand: 'Nutrition Chemist',
+    description: 'Sugar-free orange flavored vitamin C supplement',
+    benefits: ['Immune Support', 'Antioxidant Protection', 'Skin Health'],
+    dosage: '250MG, 1 tablet daily',
+    price: 3.92,
+    image: BRAND_LOGO,
+    nutrients: {
+      calories: 0,
+      protein: 0,
+      carbs: 0,
+      fat: 0,
+      micronutrients: {
+        'Vitamin C': 250
+      }
+    }
   },
   {
-    id: "5",
-    name: "Ashwagandha KSM-66",
-    brand: "Jarrow Formulas",
-    category: "adaptogens",
-    price: 21.95,
-    image: "https://images.unsplash.com/photo-1471193945509-9ad0617afabf?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
-    description: "Premium ashwagandha root extract to help the body adapt to stress and support overall wellbeing.",
-    rating: 4.7,
-    benefits: ["Reduces stress and anxiety", "Supports adrenal function", "Enhances recovery from exercise"],
-    ingredients: ["KSM-66 Ashwagandha extract", "Organic rice flour", "Vegetarian capsule"],
-    dosage: "1 capsule 1-2 times daily",
-    usageInstructions: "Take 1 capsule 1-2 times daily with food or as directed by your healthcare professional.",
-    warnings: ["Not recommended during pregnancy", "May interact with thyroid medication", "May cause drowsiness"],
-    tags: ["ashwagandha", "stress relief", "adaptogen"]
+    id: '5',
+    name: '125 Vitamin D3 4000iu + K2',
+    brand: 'Nutrition Chemist',
+    description: 'High-strength vitamin D3 with K2 for optimal absorption',
+    benefits: ['Bone Health', 'Immune Function', 'Calcium Absorption'],
+    dosage: '1 capsule daily',
+    price: 6.10,
+    image: BRAND_LOGO,
+    nutrients: {
+      calories: 0,
+      protein: 0,
+      carbs: 0,
+      fat: 0,
+      micronutrients: {
+        'Vitamin D3': 4000,
+        'Vitamin K2': 100
+      }
+    }
   },
   {
-    id: "6",
-    name: "Zinc Picolinate",
-    brand: "Thorne Research",
-    category: "minerals",
-    price: 14.99,
-    image: "https://images.unsplash.com/photo-1584017911766-d451b3d0e843?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
-    description: "Highly absorbable form of zinc to support immune function, skin health, and testosterone production.",
-    rating: 4.6,
-    benefits: ["Supports immune system", "Promotes skin health", "Aids in protein synthesis"],
-    ingredients: ["Zinc (as zinc picolinate)", "Microcrystalline cellulose", "Vegetarian capsule"],
-    dosage: "1 capsule daily with a meal",
-    usageInstructions: "Take 1 capsule daily with a meal containing fat for optimal absorption.",
-    warnings: ["Long-term use may require copper supplementation", "May interfere with certain antibiotics"],
-    tags: ["zinc", "immune support", "skin health"]
+    id: '6',
+    name: '65 Lions Mane + Black Pepper Extract',
+    brand: 'Nutrition Chemist',
+    description: 'Premium lions mane mushroom supplement with enhanced absorption',
+    benefits: ['Cognitive Function', 'Mental Clarity', 'Nerve Health'],
+    dosage: '4000MG, 2 capsules daily',
+    price: 7.45,
+    image: BRAND_LOGO,
+    nutrients: {
+      calories: 0,
+      protein: 0,
+      carbs: 0,
+      fat: 0,
+      micronutrients: {
+        'Lions Mane Extract': 4000,
+        'Black Pepper Extract': 10
+      }
+    }
   },
   {
-    id: "7",
-    name: "Curcumin with Bioperine",
-    brand: "Doctor's Best",
-    category: "antioxidants",
-    price: 25.99,
-    image: "https://images.unsplash.com/photo-1615485500704-8e990f9027d9?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
-    description: "Standardized curcumin extract with black pepper for enhanced absorption and anti-inflammatory support.",
-    rating: 4.8,
-    benefits: ["Reduces inflammation", "Supports joint health", "Provides antioxidant protection"],
-    ingredients: ["Curcumin C3 Complex", "BioPerine (black pepper extract)", "Vegetarian capsule"],
-    dosage: "1 capsule 2-3 times daily",
-    usageInstructions: "Take 1 capsule 2-3 times daily with meals or as recommended by your healthcare professional.",
-    warnings: ["May interact with blood thinners", "Discontinue use before surgery", "May cause GI discomfort in sensitive individuals"],
-    tags: ["curcumin", "turmeric", "anti-inflammatory", "joint health"]
+    id: '7',
+    name: '125 Biotin Growth',
+    brand: 'Nutrition Chemist',
+    description: 'High-strength biotin supplement for hair, skin, and nail health',
+    benefits: ['Hair Growth', 'Skin Health', 'Nail Strength'],
+    dosage: '10,000ug, 1 capsule daily',
+    price: 5.65,
+    image: BRAND_LOGO,
+    nutrients: {
+      calories: 0,
+      protein: 0,
+      carbs: 0,
+      fat: 0,
+      micronutrients: {
+        'Biotin': 10000
+      }
+    }
   },
   {
-    id: "8",
-    name: "Vitamin B Complex",
-    brand: "Pure Encapsulations",
-    category: "vitamins",
-    price: 27.50,
-    image: "https://images.unsplash.com/photo-1577460551100-d94f9ce26a37?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
-    description: "Comprehensive B vitamin formula to support energy production, cognitive function, and nervous system health.",
-    rating: 4.7,
-    benefits: ["Supports energy metabolism", "Promotes cognitive function", "Maintains nervous system health"],
-    ingredients: ["Vitamin B1, B2, B3, B5, B6, B7, B9, B12", "Hypoallergenic plant fiber", "Vegetarian capsule"],
-    dosage: "1 capsule daily with a meal",
-    usageInstructions: "Take 1 capsule daily with a meal or as directed by your healthcare professional.",
-    warnings: ["High doses may cause flushing", "May color urine bright yellow", "Consult your doctor if pregnant"],
-    tags: ["b vitamins", "energy", "cognitive function"]
-  },
-  {
-    id: "9",
-    name: "L-Theanine 200mg",
-    brand: "NOW Foods",
-    category: "amino acids",
-    price: 18.99,
-    image: "https://images.unsplash.com/photo-1564149504298-00c351fd7f16?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
-    description: "Amino acid found in green tea that promotes relaxation without drowsiness and supports cognitive function.",
-    rating: 4.6,
-    benefits: ["Promotes relaxation", "Enhances focus", "Supports stress management"],
-    ingredients: ["L-Theanine", "Cellulose", "Vegetarian capsule"],
-    dosage: "1 capsule 1-2 times daily",
-    usageInstructions: "Take 1 capsule 1-2 times daily, preferably on an empty stomach or as directed by your healthcare professional.",
-    warnings: ["May lower blood pressure", "May enhance effects of caffeine"],
-    tags: ["l-theanine", "relaxation", "focus", "stress relief"]
-  },
-  {
-    id: "10",
-    name: "Collagen Peptides",
-    brand: "Vital Proteins",
-    category: "protein",
-    price: 34.99,
-    image: "https://images.unsplash.com/photo-1610725664285-7c57e6eeac3f?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
-    description: "Grass-fed, pasture-raised bovine collagen peptides to support skin, hair, nails, joints, and gut health.",
-    rating: 4.9,
-    benefits: ["Supports skin elasticity", "Promotes joint health", "Enhances hair and nail growth"],
-    ingredients: ["Bovine collagen peptides"],
-    dosage: "1-2 scoops daily",
-    usageInstructions: "Mix 1-2 scoops with 8 oz of hot or cold liquid. Can be added to coffee, smoothies, or recipes.",
-    warnings: ["Not suitable for vegetarians/vegans", "Contains bovine products"],
-    tags: ["collagen", "skin health", "joint support", "hair and nails"]
-  },
-  {
-    id: "11",
-    name: "CoQ10 200mg",
-    brand: "Qunol",
-    category: "antioxidants",
-    price: 32.99,
-    image: "https://images.unsplash.com/photo-1587854692152-cbe660dbde88?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
-    description: "Water and fat-soluble CoQ10 for enhanced absorption to support heart health and energy production.",
-    rating: 4.7,
-    benefits: ["Supports heart health", "Enhances cellular energy", "Provides antioxidant protection"],
-    ingredients: ["Coenzyme Q10 (ubiquinone)", "Medium chain triglycerides", "Softgel capsule"],
-    dosage: "1 softgel daily with food",
-    usageInstructions: "Take 1 softgel daily with a meal containing fat for optimal absorption.",
-    warnings: ["May interact with blood thinners", "Consult your doctor if you have heart disease or are on medication"],
-    tags: ["coq10", "heart health", "energy", "antioxidant"]
-  },
-  {
-    id: "12",
-    name: "Iron Bisglycinate",
-    brand: "Thorne Research",
-    category: "minerals",
-    price: 16.99,
-    image: "https://images.unsplash.com/photo-1505751171710-1f6d0ace5a85?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
-    description: "Gentle, non-constipating iron supplement to support red blood cell production and energy levels.",
-    rating: 4.5,
-    benefits: ["Supports red blood cell formation", "Enhances oxygen transport", "Reduces fatigue"],
-    ingredients: ["Iron (as iron bisglycinate)", "Hypoallergenic plant fiber", "Vegetarian capsule"],
-    dosage: "1 capsule daily with food",
-    usageInstructions: "Take 1 capsule daily with food or as recommended by your healthcare professional.",
-    warnings: ["Keep out of reach of children", "Accidental overdose of iron-containing products is a leading cause of fatal poisoning in children", "Consult your doctor before use if pregnant"],
-    tags: ["iron", "energy", "blood health"]
+    id: '8',
+    name: 'Beauty Glow Bovine Collagen Peptides Protein Powder',
+    brand: 'Nutrition Chemist',
+    description: 'Premium collagen protein powder for beauty and wellness',
+    benefits: ['Skin Elasticity', 'Hair Growth', 'Joint Health', 'Protein Source'],
+    dosage: '14g (1 scoop) daily',
+    price: 15.32,
+    image: BRAND_LOGO,
+    nutrients: {
+      calories: 56,
+      protein: 14,
+      carbs: 0,
+      fat: 0,
+      micronutrients: {
+        'Collagen Peptides': 14000
+      }
+    }
   }
 ];
 
-// Function to fetch supplements (mock implementation)
-const fetchSupplements = async (): Promise<Supplement[]> => {
-  // In a real app, this would be an API call
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve(MOCK_SUPPLEMENTS);
-    }, 500);
-  });
-};
+const Supplements: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<'all' | 'recommended' | 'current'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const { addToCart, itemCount } = useCart();
+  const navigate = useNavigate();
 
-const SupplementsPage: React.FC = () => {
-  const { data: supplements, isLoading, error } = useQuery<Supplement[], Error>({
-    queryKey: ["supplements"],
-    queryFn: fetchSupplements,
-  });
-  const { addToCart } = useCart(); // Changed addItem to addToCart
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("all");
-  const [sortBy, setSortBy] = useState("name-asc");
-  const [selectedSupplement, setSelectedSupplement] = useState<Supplement | null>(null);
-  const [quantity, setQuantity] = useState(1);
-
-  const categories = useMemo(() => {
-    if (!supplements) return ["all"];
-    const uniqueCategories = new Set(supplements.map((s) => s.category));
-    return ["all", ...Array.from(uniqueCategories)];
-  }, [supplements]);
-
-  const filteredAndSortedSupplements = useMemo(() => {
-    if (!supplements) return [];
-    let result = [...supplements]; // Create a new array to avoid mutating the original
-    if (searchTerm) {
-      result = result.filter(
-        (s) =>
-          s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          s.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          s.tags?.some((tag) => tag.toLowerCase().includes(searchTerm.toLowerCase()))
-      );
-    }
-    if (selectedCategory !== "all") {
-      result = result.filter((s) => s.category === selectedCategory);
-    }
-    const [sortKey, sortOrder] = sortBy.split("-");
-    result.sort((a, b) => {
-      let comparison = 0;
-      if (sortKey === "name") {
-        comparison = a.name.localeCompare(b.name);
-      } else if (sortKey === "price") {
-        comparison = a.price - b.price;
-      } else if (sortKey === "rating") {
-        comparison = (b.rating ?? 0) - (a.rating ?? 0);
-      }
-      return sortOrder === "asc" ? comparison : -comparison;
-    });
-    return result;
-  }, [supplements, searchTerm, selectedCategory, sortBy]);
-
-  const handleViewDetails = (supplement: Supplement) => {
-    setSelectedSupplement(supplement);
-    setQuantity(1);
+  // Generate structured data for all products
+  const productsStructuredData = {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    itemListElement: MOCK_SUPPLEMENTS.map((supplement, index) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      item: generateProductStructuredData({
+        name: supplement.name,
+        description: supplement.description,
+        image: supplement.image,
+        price: supplement.price,
+        currency: 'GBP',
+        sku: supplement.id,
+        brand: supplement.brand
+      })
+    }))
   };
 
-  const handleCloseModal = () => {
-    setSelectedSupplement(null);
+  const handleAddToCart = (supplement: Supplement, quantity: number) => {
+    console.log('Adding to cart:', supplement, 'quantity:', quantity);
+    addToCart(supplement, quantity);
   };
 
-  const handleAddToCart = () => {
-    if (selectedSupplement) {
-      addToCart(selectedSupplement, quantity); // Use addToCart
-      toast.success(`${quantity} x ${selectedSupplement.name} added to cart!`);
-      handleCloseModal();
-    }
-  };
+  const categories = ['all', 'vitamins', 'minerals', 'herbs', 'amino-acids'];
 
-  if (isLoading) return <div className="flex justify-center items-center h-screen"><div className="animate-spin rounded-full h-16 w-16 border-t-4 border-emerald-500"></div></div>;
-  
-  if (error) return (
-    <div className="container mx-auto px-4 py-8 text-red-600">
-      <AlertCircle className="inline-block mr-2" />
-      Error loading supplements: {error.message}
-    </div>
-  );
-
-  const defaultOgImage = "/images/nutrition-chemist-logo.svg"; // Using existing logo
+  const filteredSupplements = selectedCategory === 'all' 
+    ? MOCK_SUPPLEMENTS 
+    : MOCK_SUPPLEMENTS.filter(sup => sup.nutrients.micronutrients['Collagen Peptides'] !== undefined);
 
   return (
     <>
-      <Head
-        title="Supplements Store - Nutrition Chemist"
-        description="Browse our wide range of high-quality health supplements."
-        ogImage={defaultOgImage}
-        url={window.location.href}
-      />
-      <SEOMetadata
-        title="Supplements | Nutrition Chemist Hub"
-        description="Find and compare top-quality health supplements. Vitamins, minerals, probiotics, and more."
-        keywords="supplements, vitamins, minerals, health products, nutrition, chemist"
-        ogImage={defaultOgImage}
-        article={false}
+      <Head 
+        title="Premium Health Supplements"
+        description="Shop our range of expert-formulated health supplements. High-quality vitamins, minerals, and wellness products backed by scientific research. Free UK delivery."
+        keywords={['buy supplements online', 'vitamins', 'minerals', 'health supplements', 'wellness products', 'premium supplements', 'UK supplements']}
+        type="website"
+        structuredData={productsStructuredData}
       />
 
-      <div className="container mx-auto px-4 py-8">
-        <header className="mb-8 text-center">
-          <h1 className="text-4xl font-bold text-gray-800 mb-2">Our Supplements</h1>
-          <p className="text-lg text-gray-600">Find the best products to support your health and wellness goals.</p>
-        </header>
-
-        {/* Filters Section */}
-        <div className="mb-8 p-6 bg-white shadow-lg rounded-lg grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
-          <div>
-            <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-1">Search</label>
-            <div className="relative">
-              <Input
-                id="search"
-                type="text"
-                placeholder="Search by name, brand, or tag..."
-                value={searchTerm}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
-                className="pl-10 w-full"
-              />
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-            </div>
-          </div>
-          <div>
-            <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-              <SelectTrigger id="category" className="w-full">
-                <SelectValue placeholder="Select category" />
-              </SelectTrigger>
-              <SelectContent>
-                {categories.map((cat) => (
-                  <SelectItem key={cat} value={cat}>{cat.charAt(0).toUpperCase() + cat.slice(1)}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <label htmlFor="sort" className="block text-sm font-medium text-gray-700 mb-1">Sort By</label>
-            <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger id="sort" className="w-full">
-                <SelectValue placeholder="Sort by" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="name-asc">Name (A-Z)</SelectItem>
-                <SelectItem value="name-desc">Name (Z-A)</SelectItem>
-                <SelectItem value="price-asc">Price (Low to High)</SelectItem>
-                <SelectItem value="price-desc">Price (High to Low)</SelectItem>
-                <SelectItem value="rating-desc">Rating (High to Low)</SelectItem>
-              </SelectContent>
-            </Select>
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h1 className="text-2xl font-semibold text-gray-900">Supplements</h1>
+          <div className="flex items-center space-x-4">
+            <button className="relative px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg">
+              <Bell className="w-5 h-5" />
+              <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full" />
+            </button>
+            <button 
+              onClick={() => navigate('/cart')}
+              className="relative px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+            >
+              <ShoppingCart className="w-5 h-5" />
+              {itemCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-blue-600 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
+                  {itemCount}
+                </span>
+              )}
+            </button>
           </div>
         </div>
 
-        {/* Supplements Grid */}
-        <AnimatePresence>
-          <motion.div
-            layout
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8"
-          >
-            {filteredAndSortedSupplements && filteredAndSortedSupplements.length > 0 ? (
-              filteredAndSortedSupplements.map((supplement) => (
-                <motion.div
-                  key={supplement.id}
-                  className="bg-white shadow-xl rounded-lg overflow-hidden flex flex-col hover:shadow-2xl transition-shadow duration-300"
-                  layout
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.3 }}
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div className="border-b border-gray-200">
+            <div className="flex p-4">
+              <div className="flex-1">
+                <div className="flex space-x-4">
+                  {['all', 'recommended', 'current'].map((tab) => (
+                    <button
+                      key={tab}
+                      className={`px-4 py-2 text-sm font-medium rounded-lg ${
+                        activeTab === tab
+                          ? 'bg-blue-50 text-blue-700'
+                          : 'text-gray-500 hover:text-gray-700'
+                      }`}
+                      onClick={() => setActiveTab(tab as typeof activeTab)}
+                    >
+                      {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex items-center space-x-4">
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Search supplements..."
+                    className="w-64 pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
+                <button className="flex items-center text-gray-500 hover:text-gray-700">
+                  <Filter className="w-5 h-5 mr-2" />
+                  Filter
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-4">
+            <div className="flex space-x-4 mb-4">
+              {categories.map((category) => (
+                <button
+                  key={category}
+                  className={`px-4 py-2 text-sm font-medium rounded-lg ${
+                    selectedCategory === category
+                      ? 'bg-blue-50 text-blue-700'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                  onClick={() => setSelectedCategory(category)}
                 >
-                  {supplement.image && (
-                     <div className="w-full h-56 overflow-hidden">
-                        <OptimizedImage
-                            src={supplement.image}
-                            alt={supplement.name}
-                            className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
-                        />
+                  {category.charAt(0).toUpperCase() + category.slice(1)}
+                </button>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {filteredSupplements.map((supplement) => (
+                <div key={supplement.id} className="bg-white rounded-lg shadow-sm overflow-hidden">
+                  <div className="p-4">
+                    <OptimizedImage
+                      src={supplement.image}
+                      alt={supplement.name}
+                      className="w-full h-48 object-contain mb-4"
+                    />
+                    <h3 className="text-lg font-semibold text-gray-900">{supplement.name}</h3>
+                    <p className="text-sm text-gray-600 mt-1">{supplement.description}</p>
+                    <div className="mt-4">
+                      <span className="text-2xl font-bold text-gray-900">£{supplement.price.toFixed(2)}</span>
                     </div>
-                  )}
-                  <div className="p-6 flex flex-col flex-grow">
-                    <h3 className="text-xl font-semibold text-gray-800 mb-2 truncate" title={supplement.name}>{supplement.name}</h3>
-                    <p className="text-sm text-gray-500 mb-1">{supplement.brand}</p>
-                    <p className="text-lg font-bold text-emerald-600 mb-3">£{supplement.price.toFixed(2)}</p>
-                    {supplement.rating && (
-                      <div className="flex items-center mb-3">
-                        {[...Array(Math.floor(supplement.rating))].map((_, i) => (
-                          <svg key={i} className="w-4 h-4 text-yellow-400 fill-current" viewBox="0 0 20 20"><path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z"/></svg>
-                        ))}
-                        {supplement.rating % 1 !== 0 && (
-                           <svg className="w-4 h-4 text-yellow-400 fill-current" viewBox="0 0 20 20"><path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z M10 0v12.5l-4.472 2.35L6.65 9.12.489 6.91l4.98-.72L10 0z"/></svg>
-                        )}
-                         <span className="ml-1 text-xs text-gray-500">({supplement.rating.toFixed(1)})</span>
-                      </div>
-                    )}
-                    <p className="text-xs text-gray-600 mb-4 flex-grow line-clamp-3">{supplement.description}</p>
-                    <Button
-                      onClick={() => handleViewDetails(supplement)}
-                      className="w-full mt-auto bg-emerald-500 hover:bg-emerald-600 text-white"
-                      aria-label={`View details for ${supplement.name}`}
+                    <button
+                      onClick={() => handleAddToCart(supplement, 1)}
+                      className="mt-4 w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
                     >
-                      View Details
-                    </Button>
-                  </div>
-                </motion.div>
-              ))
-            ) : (
-              <motion.div layout className="col-span-full text-center py-12">
-                <Search className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-                <p className="text-xl text-gray-500">No supplements found matching your criteria.</p>
-              </motion.div>
-            )}
-          </motion.div>
-        </AnimatePresence>
-
-        {/* Details Modal */}
-        <AnimatePresence>
-          {selectedSupplement && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4"
-              onClick={handleCloseModal} // Close on backdrop click
-            >
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ duration: 0.2 }}
-                className="bg-white p-6 sm:p-8 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
-                onClick={(e) => e.stopPropagation()} // Prevent modal close when clicking inside
-              >
-                <div className="flex justify-between items-start mb-6">
-                  <h2 className="text-3xl font-bold text-gray-800">{selectedSupplement.name}</h2>
-                  <Button onClick={handleCloseModal} variant="ghost" size="icon" className="text-gray-500 hover:text-gray-700">
-                    <X className="h-6 w-6" />
-                  </Button>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                  {selectedSupplement.image && (
-                    <OptimizedImage src={selectedSupplement.image} alt={selectedSupplement.name} className="w-full h-auto rounded-lg shadow-md object-contain max-h-80" />
-                  )}
-                  <div className={!selectedSupplement.image ? "md:col-span-2" : ""}>
-                    <p className="text-gray-500 text-sm mb-1">Brand: {selectedSupplement.brand}</p>
-                    <p className="text-gray-500 text-sm mb-3">Category: {selectedSupplement.category}</p>
-                    <p className="text-2xl font-bold text-emerald-600 mb-4">£{selectedSupplement.price.toFixed(2)}</p>
-                    
-                    <div className="mb-4">
-                        <h4 className="text-sm font-medium text-gray-700 mb-1">Quantity:</h4>
-                        <div className="flex items-center space-x-3">
-                            <Button 
-                                variant="outline" 
-                                size="icon" 
-                                onClick={() => setQuantity(q => Math.max(1, q - 1))}
-                                disabled={quantity <= 1}
-                            >
-                                <Minus className="h-4 w-4" />
-                            </Button>
-                            <span className="text-lg font-medium w-10 text-center">{quantity}</span>
-                            <Button 
-                                variant="outline" 
-                                size="icon" 
-                                onClick={() => setQuantity(q => q + 1)}
-                            >
-                                <Plus className="h-4 w-4" />
-                            </Button>
-                        </div>
-                    </div>
-
-                    <Button 
-                        onClick={handleAddToCart} 
-                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-lg py-3"
-                        aria-label={`Add ${selectedSupplement.name} to cart`}
-                    >
-                      <ShoppingCart className="mr-2 h-5 w-5" /> Add to Cart (£{(selectedSupplement.price * quantity).toFixed(2)})
-                    </Button>
+                      Add to Cart
+                    </button>
                   </div>
                 </div>
-                
-                <div className="space-y-4 text-sm text-gray-700">
-                    {selectedSupplement.description && <p>{selectedSupplement.description}</p>}
-                    
-                    {selectedSupplement.benefits && selectedSupplement.benefits.length > 0 && (
-                        <div>
-                            <h4 className="font-semibold mb-1">Key Benefits:</h4>
-                            <ul className="list-disc list-inside space-y-0.5">
-                                {selectedSupplement.benefits.map((benefit, i) => <li key={i}>{benefit}</li>)}
-                            </ul>
-                        </div>
-                    )}
-
-                    {selectedSupplement.ingredients && selectedSupplement.ingredients.length > 0 && (
-                        <div>
-                            <h4 className="font-semibold mb-1">Ingredients:</h4>
-                            <p className="text-xs text-gray-600">{selectedSupplement.ingredients.join(', ')}</p>
-                        </div>
-                    )}
-
-                    {selectedSupplement.dosage && (
-                        <div>
-                            <h4 className="font-semibold mb-1">Dosage:</h4>
-                            <p>{selectedSupplement.dosage}</p>
-                        </div>
-                    )}
-                    
-                    {selectedSupplement.usageInstructions && (
-                        <div>
-                            <h4 className="font-semibold mb-1">Usage Instructions:</h4>
-                            <p>{selectedSupplement.usageInstructions}</p>
-                        </div>
-                    )}
-
-                    {selectedSupplement.warnings && selectedSupplement.warnings.length > 0 && (
-                        <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-                            <div className="flex items-start">
-                                <Info className="h-5 w-5 text-yellow-500 mr-2 shrink-0 mt-0.5" />
-                                <div>
-                                    <h4 className="font-semibold text-yellow-700 mb-0.5">Warnings:</h4>
-                                    <ul className="list-disc list-inside space-y-0.5 text-yellow-600 text-xs">
-                                        {selectedSupplement.warnings.map((warning, i) => <li key={i}>{warning}</li>)}
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
     </>
   );
 };
 
-export default SupplementsPage;
+export default Supplements; 
