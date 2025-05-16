@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { Filter, Bell, ShoppingCart } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { SupplementCard } from '@/components/supplements/SupplementCard';
-import { useCart } from '@/contexts/CartContext';
-import type { Supplement } from '@/types';
-import { Head } from '@/components/SEO/Head';
-import { OptimizedImage } from '@/components/ui/OptimizedImage';
-import { generateProductStructuredData } from '@/utils/structuredData';
+import { SupplementCard } from '../components/supplements/SupplementCard';
+import { useCart } from '../contexts/CartContext';
+import type { Supplement } from '../types';
+import { Head } from '../components/SEO/Head';
+import { OptimizedImage } from '../components/ui/OptimizedImage';
+import { generateProductStructuredData } from '../utils/structuredData';
 
 // Brand logo for all Nutrition Chemist products
 const BRAND_LOGO = '/images/nutrition-chemist-logo.svg';
@@ -196,10 +196,7 @@ const Supplements: React.FC = () => {
 
   const handleAddToCart = (supplement: Supplement) => {
     console.log('Adding to cart:', supplement);
-    addToCart({
-      supplement,
-      quantity: 1
-    });
+    addToCart(supplement, 1);
   };
 
   const categories = ['all', 'vitamins', 'minerals', 'herbs', 'amino-acids'];
@@ -297,26 +294,11 @@ const Supplements: React.FC = () => {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {filteredSupplements.map((supplement) => (
-                <div key={supplement.id} className="bg-white rounded-lg shadow-sm overflow-hidden">
-                  <div className="p-4">
-                    <OptimizedImage
-                      src={supplement.image}
-                      alt={supplement.name}
-                      className="w-full h-48 object-contain mb-4"
-                    />
-                    <h3 className="text-lg font-semibold text-gray-900">{supplement.name}</h3>
-                    <p className="text-sm text-gray-600 mt-1">{supplement.description}</p>
-                    <div className="mt-4">
-                      <span className="text-2xl font-bold text-gray-900">£{supplement.price.toFixed(2)}</span>
-                    </div>
-                    <button
-                      onClick={() => handleAddToCart(supplement)}
-                      className="mt-4 w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
-                    >
-                      Add to Cart
-                    </button>
-                  </div>
-                </div>
+                <SupplementCard
+                  key={supplement.id}
+                  supplement={supplement}
+                  onAdd={(quantity) => addToCart(supplement, quantity)}
+                />
               ))}
             </div>
           </div>

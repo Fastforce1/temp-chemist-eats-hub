@@ -8,7 +8,7 @@ interface SupplementCardProps {
   onAdd: (quantity: number) => void;
 }
 
-const SupplementCard: React.FC<SupplementCardProps> = ({
+export const SupplementCard: React.FC<SupplementCardProps> = ({
   supplement,
   isRecommended = false,
   onAdd
@@ -107,7 +107,4 @@ const SupplementCard: React.FC<SupplementCardProps> = ({
         </div>
       </div>
     </div>
-  );
-};
-
-export default SupplementCard; 
+  ); 
