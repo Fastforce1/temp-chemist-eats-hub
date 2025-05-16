@@ -6,9 +6,14 @@ interface CartItem {
   quantity: number;
 }
 
+interface AddToCartParams {
+  supplement: Supplement;
+  quantity?: number;
+}
+
 interface CartContextType {
   items: CartItem[];
-  addToCart: (supplement: Supplement, quantity?: number) => void;
+  addToCart: (supplementOrParams: Supplement | AddToCartParams, quantity?: number) => void;
   removeFromCart: (supplementId: string) => void;
   updateQuantity: (supplementId: string, quantity: number) => void;
   clearCart: () => void;
@@ -21,19 +26,23 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [items, setItems] = useState<CartItem[]>([]);
 
-  const addToCart = useCallback((supplement: Supplement, quantity: number = 1) => {
+  const addToCart = useCallback((supplementOrParams: Supplement | AddToCartParams, quantity: number = 1) => {
     setItems(currentItems => {
+      // Handle both object and separate parameter versions
+      const supplement = 'supplement' in supplementOrParams ? supplementOrParams.supplement : supplementOrParams;
+      const qty = 'quantity' in supplementOrParams ? supplementOrParams.quantity || 1 : quantity;
+      
       const existingItem = currentItems.find(item => item.supplement.id === supplement.id);
       
       if (existingItem) {
         return currentItems.map(item =>
           item.supplement.id === supplement.id
-            ? { ...item, quantity: item.quantity + quantity }
+            ? { ...item, quantity: item.quantity + qty }
             : item
         );
       }
 
-      return [...currentItems, { supplement, quantity }];
+      return [...currentItems, { supplement, quantity: qty }];
     });
   }, []);
 
