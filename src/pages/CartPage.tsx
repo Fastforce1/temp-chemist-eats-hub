@@ -15,8 +15,25 @@ const CartPage: React.FC = () => {
 
   const handleCheckout = async () => {
     setIsLoading(true);
+    console.log('Starting checkout process...', {
+      itemCount,
+      total,
+      isAuthenticated: !!user,
+      userId: user?.id,
+    });
+
     if (items.length === 0) {
+      console.error('Attempted checkout with empty cart');
       toast.error("Your cart is empty.");
+      setIsLoading(false);
+      return;
+    }
+
+    // Validate cart items before sending
+    const invalidItems = items.filter(item => !item.supplement || !item.quantity);
+    if (invalidItems.length > 0) {
+      console.error('Invalid cart items detected:', invalidItems);
+      toast.error("Some items in your cart are invalid. Please try refreshing the page.");
       setIsLoading(false);
       return;
     }
@@ -33,10 +50,15 @@ const CartPage: React.FC = () => {
       })),
     };
 
+    console.log('Prepared cart details:', cartDetails);
+
     try {
+      console.log('Sending checkout request to Supabase function...');
       const { data, error } = await supabase.functions.invoke('create-checkout-session', {
         body: cartDetails,
       });
+
+      console.log('Received response:', { data, error });
 
       if (error) {
         console.error("Error invoking create-checkout-session:", error);
@@ -45,10 +67,11 @@ const CartPage: React.FC = () => {
         return;
       }
 
-      if (data && data.url) {
+      if (data?.url) {
+        console.log('Redirecting to Stripe checkout:', data.url);
         window.location.href = data.url;
       } else {
-        console.error("No session URL returned from function:", data);
+        console.error("No session URL returned:", data);
         toast.error("Checkout failed: Could not retrieve payment session.");
         setIsLoading(false);
       }
@@ -58,6 +81,15 @@ const CartPage: React.FC = () => {
       setIsLoading(false);
     }
   };
+
+  // Log cart state changes
+  React.useEffect(() => {
+    console.log('Cart state updated:', {
+      itemCount,
+      total,
+      items,
+    });
+  }, [items, itemCount, total]);
 
   return (
     <>
@@ -120,7 +152,13 @@ const CartPage: React.FC = () => {
                     <div className="flex items-center space-x-6">
                       <div className="flex items-center space-x-2">
                         <button
-                          onClick={() => updateQuantity(item.supplement.id, item.quantity - 1)}
+                          onClick={() => {
+                            console.log('Decreasing quantity:', {
+                              itemId: item.supplement.id,
+                              currentQuantity: item.quantity,
+                            });
+                            updateQuantity(item.supplement.id, item.quantity - 1);
+                          }}
                           className="p-1 text-gray-400 hover:text-gray-500 disabled:opacity-50"
                           disabled={item.quantity <= 1}
                         >
@@ -128,14 +166,26 @@ const CartPage: React.FC = () => {
                         </button>
                         <span className="text-gray-600 w-8 text-center">{item.quantity}</span>
                         <button
-                          onClick={() => updateQuantity(item.supplement.id, item.quantity + 1)}
+                          onClick={() => {
+                            console.log('Increasing quantity:', {
+                              itemId: item.supplement.id,
+                              currentQuantity: item.quantity,
+                            });
+                            updateQuantity(item.supplement.id, item.quantity + 1);
+                          }}
                           className="p-1 text-gray-400 hover:text-gray-500"
                         >
                           <Plus className="h-5 w-5" />
                         </button>
                       </div>
                       <button
-                        onClick={() => removeFromCart(item.supplement.id)}
+                        onClick={() => {
+                          console.log('Removing item:', {
+                            itemId: item.supplement.id,
+                            name: item.supplement.name,
+                          });
+                          removeFromCart(item.supplement.id);
+                        }}
                         className="text-red-500 hover:text-red-600"
                       >
                         <X className="h-6 w-6" />
@@ -183,7 +233,10 @@ const CartPage: React.FC = () => {
                   {isLoading ? 'Processing...' : `Proceed to Checkout ${user ? '' : '(as Guest)'}`}
                 </button>
                 <button
-                  onClick={clearCart}
+                  onClick={() => {
+                    console.log('Clearing cart');
+                    clearCart();
+                  }}
                   className="w-full text-center text-sm text-gray-500 hover:text-gray-700"
                   disabled={items.length === 0}
                 >
