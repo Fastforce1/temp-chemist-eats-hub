@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+    <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+      
+      <url>
+        <loc>https://chemist-eats-hub.com/supplements/category/protein</loc>
+        
+        <changefreq>weekly</changefreq>
+        <priority>0.6</priority>
+      </url>
+    
+      <url>
+        <loc>https://chemist-eats-hub.com/supplements/category/pre-workout</loc>
+        
+        <changefreq>weekly</changefreq>
+        <priority>0.6</priority>
+      </url>
+    
+      <url>
+        <loc>https://chemist-eats-hub.com/supplements/category/post-workout</loc>
+        
+        <changefreq>weekly</changefreq>
+        <priority>0.6</priority>
+      </url>
+    
+      <url>
+        <loc>https://chemist-eats-hub.com/supplements/category/vitamins</loc>
+        
+        <changefreq>weekly</changefreq>
+        <priority>0.6</priority>
+      </url>
+    
+      <url>
+        <loc>https://chemist-eats-hub.com/supplements/category/minerals</loc>
+        
+        <changefreq>weekly</changefreq>
+        <priority>0.6</priority>
+      </url>
+    
+      <url>
+        <loc>https://chemist-eats-hub.com/supplements/category/amino-acids</loc>
+        
+        <changefreq>weekly</changefreq>
+        <priority>0.6</priority>
+      </url>
+    
+      <url>
+        <loc>https://chemist-eats-hub.com/supplements/category/weight-management</loc>
+        
+        <changefreq>weekly</changefreq>
+        <priority>0.6</priority>
+      </url>
+    
+      <url>
+        <loc>https://chemist-eats-hub.com/supplements/category/wellness</loc>
+        
+        <changefreq>weekly</changefreq>
+        <priority>0.6</priority>
+      </url>
+    
+    </urlset>

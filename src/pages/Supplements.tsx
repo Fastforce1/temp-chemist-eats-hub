@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
 import { Filter, Bell, ShoppingCart } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import SupplementCard from '../components/supplements/SupplementCard';
-import Cart from '../components/cart/Cart';
 import { useCart } from '../contexts/CartContext';
 import type { Supplement } from '../types';
+import { Head } from '../components/SEO/Head';
+import { OptimizedImage } from '../components/ui/OptimizedImage';
+import { generateProductStructuredData } from '../utils/structuredData';
 
 // Brand logo for all Nutrition Chemist products
 const BRAND_LOGO = '/images/nutrition-chemist-logo.svg';
@@ -168,128 +171,155 @@ const MOCK_SUPPLEMENTS: Supplement[] = [
 const Supplements: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'all' | 'recommended' | 'current'>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState('all');
   const { addToCart, itemCount } = useCart();
+  const navigate = useNavigate();
+
+  // Generate structured data for all products
+  const productsStructuredData = {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    itemListElement: MOCK_SUPPLEMENTS.map((supplement, index) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      item: generateProductStructuredData({
+        name: supplement.name,
+        description: supplement.description,
+        image: supplement.image,
+        price: supplement.price,
+        currency: 'GBP',
+        sku: supplement.id,
+        brand: supplement.brand
+      })
+    }))
+  };
 
   const handleAddToCart = (supplement: Supplement, quantity: number) => {
     console.log('Adding to cart:', supplement, 'quantity:', quantity);
     addToCart(supplement, quantity);
   };
 
+  const categories = ['all', 'vitamins', 'minerals', 'herbs', 'amino-acids'];
+
+  const filteredSupplements = selectedCategory === 'all' 
+    ? MOCK_SUPPLEMENTS 
+    : MOCK_SUPPLEMENTS.filter(sup => sup.nutrients.micronutrients['Collagen Peptides'] !== undefined);
+
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-semibold text-gray-900">Supplements</h1>
-        <div className="flex items-center space-x-4">
-          <button className="relative px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg">
-            <Bell className="w-5 h-5" />
-            <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full" />
-          </button>
-          <button 
-            onClick={() => setIsCartOpen(true)}
-            className="relative px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
-          >
-            <ShoppingCart className="w-5 h-5" />
-            {itemCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-blue-600 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
-                {itemCount}
-              </span>
-            )}
-          </button>
-        </div>
-      </div>
+    <>
+      <Head 
+        title="Premium Health Supplements"
+        description="Shop our range of expert-formulated health supplements. High-quality vitamins, minerals, and wellness products backed by scientific research. Free UK delivery."
+        keywords={['buy supplements online', 'vitamins', 'minerals', 'health supplements', 'wellness products', 'premium supplements', 'UK supplements']}
+        type="website"
+        structuredData={productsStructuredData}
+      />
 
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-        <div className="border-b border-gray-200">
-          <div className="flex p-4">
-            <div className="flex-1">
-              <div className="flex space-x-4">
-                {['all', 'recommended', 'current'].map((tab) => (
-                  <button
-                    key={tab}
-                    className={`px-4 py-2 text-sm font-medium rounded-lg ${
-                      activeTab === tab
-                        ? 'bg-blue-50 text-blue-700'
-                        : 'text-gray-500 hover:text-gray-700'
-                    }`}
-                    onClick={() => setActiveTab(tab as typeof activeTab)}
-                  >
-                    {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Search supplements..."
-                  className="w-64 pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-              <button className="flex items-center text-gray-500 hover:text-gray-700">
-                <Filter className="w-5 h-5 mr-2" />
-                Filter
-              </button>
-            </div>
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h1 className="text-2xl font-semibold text-gray-900">Supplements</h1>
+          <div className="flex items-center space-x-4">
+            <button className="relative px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg">
+              <Bell className="w-5 h-5" />
+              <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full" />
+            </button>
+            <button 
+              onClick={() => navigate('/cart')}
+              className="relative px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+            >
+              <ShoppingCart className="w-5 h-5" />
+              {itemCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-blue-600 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
+                  {itemCount}
+                </span>
+              )}
+            </button>
           </div>
         </div>
 
-        <div className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {MOCK_SUPPLEMENTS.map(supplement => (
-              <SupplementCard
-                key={supplement.id}
-                supplement={supplement}
-                isRecommended={activeTab === 'recommended'}
-                onAdd={(quantity) => handleAddToCart(supplement, quantity)}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-xl shadow-sm">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">
-            Supplement Schedule
-          </h2>
-          <div className="space-y-4">
-            {['Morning', 'Afternoon', 'Evening'].map(timeOfDay => (
-              <div key={timeOfDay} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                <div>
-                  <h3 className="font-medium text-gray-700">{timeOfDay}</h3>
-                  <p className="text-sm text-gray-500">2 supplements</p>
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div className="border-b border-gray-200">
+            <div className="flex p-4">
+              <div className="flex-1">
+                <div className="flex space-x-4">
+                  {['all', 'recommended', 'current'].map((tab) => (
+                    <button
+                      key={tab}
+                      className={`px-4 py-2 text-sm font-medium rounded-lg ${
+                        activeTab === tab
+                          ? 'bg-blue-50 text-blue-700'
+                          : 'text-gray-500 hover:text-gray-700'
+                      }`}
+                      onClick={() => setActiveTab(tab as typeof activeTab)}
+                    >
+                      {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                    </button>
+                  ))}
                 </div>
-                <button className="px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg">
-                  View Details
+              </div>
+              <div className="flex items-center space-x-4">
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Search supplements..."
+                    className="w-64 pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
+                <button className="flex items-center text-gray-500 hover:text-gray-700">
+                  <Filter className="w-5 h-5 mr-2" />
+                  Filter
                 </button>
               </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-xl shadow-sm">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">
-            Supplement Insights
-          </h2>
-          <div className="space-y-4">
-            <div className="p-4 bg-green-50 text-green-700 rounded-lg">
-              <p className="font-medium">Good adherence!</p>
-              <p className="text-sm mt-1">You've taken 90% of your supplements this week.</p>
             </div>
-            <div className="p-4 bg-yellow-50 text-yellow-700 rounded-lg">
-              <p className="font-medium">Vitamin D is running low</p>
-              <p className="text-sm mt-1">Order now to maintain your supply.</p>
+          </div>
+
+          <div className="p-4">
+            <div className="flex space-x-4 mb-4">
+              {categories.map((category) => (
+                <button
+                  key={category}
+                  className={`px-4 py-2 text-sm font-medium rounded-lg ${
+                    selectedCategory === category
+                      ? 'bg-blue-50 text-blue-700'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                  onClick={() => setSelectedCategory(category)}
+                >
+                  {category.charAt(0).toUpperCase() + category.slice(1)}
+                </button>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {filteredSupplements.map((supplement) => (
+                <div key={supplement.id} className="bg-white rounded-lg shadow-sm overflow-hidden">
+                  <div className="p-4">
+                    <OptimizedImage
+                      src={supplement.image}
+                      alt={supplement.name}
+                      className="w-full h-48 object-contain mb-4"
+                    />
+                    <h3 className="text-lg font-semibold text-gray-900">{supplement.name}</h3>
+                    <p className="text-sm text-gray-600 mt-1">{supplement.description}</p>
+                    <div className="mt-4">
+                      <span className="text-2xl font-bold text-gray-900">£{supplement.price.toFixed(2)}</span>
+                    </div>
+                    <button
+                      onClick={() => handleAddToCart(supplement, 1)}
+                      className="mt-4 w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      Add to Cart
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
       </div>
-
-      <Cart isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
-    </div>
+    </>
   );
 };
 

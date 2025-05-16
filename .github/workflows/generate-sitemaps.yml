@@ -1,0 +1,95 @@
+name: Generate Sitemaps
+
+on:
+  schedule:
+    # Run daily at midnight UTC
+    - cron: '0 0 * * *'
+  # Allow manual trigger
+  workflow_dispatch:
+  # Run on main branch pushes
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/pages/**'
+      - 'public/**'
+      - 'src/components/**'
+
+jobs:
+  generate-sitemaps:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate sitemaps
+        env:
+          VITE_APP_URL: 'https://chemist-eats-hub.com'
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          NODE_ENV: 'production'
+        run: |
+          # Verify environment variables
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "Error: Required environment variables are not set"
+            exit 1
+          fi
+          
+          # Generate sitemaps
+          npm run generate:sitemap
+
+      - name: Check for changes
+        id: check_changes
+        run: |
+          git diff --quiet public/sitemaps/ public/sitemap.xml || echo "changes=true" >> $GITHUB_OUTPUT
+
+      - name: Configure Git
+        if: steps.check_changes.outputs.changes == 'true'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+
+      - name: Commit changes
+        if: steps.check_changes.outputs.changes == 'true'
+        run: |
+          git add public/sitemaps/
+          git add public/sitemap.xml
+          git commit -m "Update sitemaps [skip ci]"
+
+      - name: Push changes
+        if: steps.check_changes.outputs.changes == 'true'
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ github.ref }}
+
+      - name: Ping search engines
+        if: success()
+        run: |
+          # Ping Google
+          curl -s "http://www.google.com/ping?sitemap=https://chemist-eats-hub.com/sitemap.xml"
+          echo "Pinged Google successfully"
+          
+          # Ping Bing
+          curl -s "http://www.bing.com/ping?sitemap=https://chemist-eats-hub.com/sitemap.xml"
+          echo "Pinged Bing successfully"
+
+      - name: Report status
+        if: always()
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "✅ Sitemap generation completed successfully"
+          else
+            echo "❌ Sitemap generation failed"
+            exit 1
+          fi 

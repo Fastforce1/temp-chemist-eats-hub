@@ -1,0 +1,27 @@
+# Allow all web crawlers
+User-agent: *
+Allow: /
+
+# Disallow admin and private areas
+Disallow: /dashboard/
+Disallow: /settings/
+Disallow: /profile/
+Disallow: /api/
+
+# Sitemaps
+Sitemap: https://chemist-eats-hub.com/sitemap.xml
+Sitemap: https://chemist-eats-hub.com/sitemaps/sitemap-products.xml
+Sitemap: https://chemist-eats-hub.com/sitemaps/sitemap-comparisons.xml
+Sitemap: https://chemist-eats-hub.com/sitemaps/sitemap-categories.xml
+
+# Crawl-delay for all bots
+Crawl-delay: 10
+
+# Prevent duplicate content
+Disallow: /*?session_id=
+Disallow: /*?sort=
+Disallow: /*?filter=
+Disallow: /checkout
+Disallow: /cart
+Disallow: /payment-success
+Disallow: /payment-cancel 
