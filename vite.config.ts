@@ -1,4 +1,3 @@
-
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
@@ -12,7 +11,7 @@ export default defineConfig({
     },
   },
   server: {
-    port: 8080, // Changed from 5173 to 8080
+    port: 5173,
     host: true,
   },
   preview: {

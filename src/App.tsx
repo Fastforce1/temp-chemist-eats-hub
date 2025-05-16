@@ -1,5 +1,4 @@
-
-// Removed React import as it's not directly used with modern JSX transform
+import React from 'react';
 import { Routes, Route, Navigate } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -8,106 +7,141 @@ import { HelmetProvider } from 'react-helmet-async';
 import { AuthProvider } from './contexts/AuthContext';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { loadStripe } from '@stripe/stripe-js';
+import DashboardLayout from './components/layout/DashboardLayout';
+import LoadingSpinner from './components/ui/LoadingSpinner';
+import { CartProvider } from './contexts/CartContext';
+import { stripePromise } from './utils/stripe';
+
+// Lazy load other routes for better performance
+const MealPlanner = React.lazy(() => import('./pages/MealPlanner'));
+const Supplements = React.lazy(() => import('./pages/Supplements'));
+const HealthGoals = React.lazy(() => import('./pages/HealthGoals'));
+const Progress = React.lazy(() => import('./pages/Progress'));
+const DailyLog = React.lazy(() => import('./pages/DailyLog'));
+const Learn = React.lazy(() => import('./pages/Learn'));
+const Settings = React.lazy(() => import('./pages/Settings'));
+const UserProfile = React.lazy(() => import('./pages/UserProfile'));
+const PaymentSuccess = React.lazy(() => import('./pages/payment-success'));
+const PaymentCancel = React.lazy(() => import('./pages/payment-cancel'));
+const CartPage = React.lazy(() => import('./pages/CartPage'));
 
 // Layouts
 import MainLayout from './components/layouts/MainLayout';
-import DashboardLayout from './components/layout/DashboardLayout'; // Read-only
 
 // Pages
 import Home from './pages/Home';
-import Login from './pages/Login';
-import Supplements from './pages/Supplements';
 import RecipeSearch from './pages/RecipeSearch';
 import RecipeDetail from './pages/RecipeDetail';
-import Contact from './pages/Contact';
-import Learn from './pages/Learn';
-import CartPage from './pages/CartPage';
-import PaymentSuccessPage from './pages/payment-success';
-import PaymentCancelPage from './pages/payment-cancel';
-
-// Dashboard Pages
 import Dashboard from './pages/Dashboard';
-import MealPlanner from './pages/MealPlanner';
-import DailyLog from './pages/DailyLog';
-import Progress from './pages/Progress';
-import HealthGoals from './pages/HealthGoals';
 import SavedRecipes from './pages/SavedRecipes';
-import UserProfile from './pages/UserProfile';
-import Settings from './pages/Settings';
+import Login from './pages/Login';
+import Contact from './pages/Contact';
 
 // Auth
-import ProtectedRoute from './components/auth/ProtectedRoute'; // Read-only
+import ProtectedRoute from './components/auth/ProtectedRoute';
 
-// Initialize Stripe
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
-
+// Create a client
 const queryClient = new QueryClient();
 
-// Helper components for Dashboard routes
-const DashboardRouteElement = () => <ProtectedRoute><DashboardLayout><Dashboard /></DashboardLayout></ProtectedRoute>;
-const MealPlannerRouteElement = () => <ProtectedRoute><DashboardLayout><MealPlanner /></DashboardLayout></ProtectedRoute>;
-const DailyLogRouteElement = () => <ProtectedRoute><DashboardLayout><DailyLog /></DashboardLayout></ProtectedRoute>;
-const ProgressRouteElement = () => <ProtectedRoute><DashboardLayout><Progress /></DashboardLayout></ProtectedRoute>;
-const HealthGoalsRouteElement = () => <ProtectedRoute><DashboardLayout><HealthGoals /></DashboardLayout></ProtectedRoute>;
-const SavedRecipesRouteElement = () => <ProtectedRoute><DashboardLayout><SavedRecipes /></DashboardLayout></ProtectedRoute>;
-const UserProfileRouteElement = () => <ProtectedRoute><DashboardLayout><UserProfile /></DashboardLayout></ProtectedRoute>;
-const SettingsRouteElement = () => <ProtectedRoute><DashboardLayout><Settings /></DashboardLayout></ProtectedRoute>;
+const App: React.FC = () => {
+  const isClient = typeof window !== 'undefined';
 
-function App() {
-  return (
+  const content = (
     <HelmetProvider>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <Elements stripe={stripePromise}>
-            <AnimatePresence mode="wait">
+          <CartProvider>
+            <Elements stripe={stripePromise}>
               <Routes>
-                {/* Public Routes with MainLayout */}
+                {/* Public routes */}
+                <Route path="/login" element={<Login />} />
+                <Route path="/signup" element={<div>Signup Page</div>} />
+                <Route path="/payment-success" element={
+                  <React.Suspense fallback={<LoadingSpinner />}>
+                    <PaymentSuccess />
+                  </React.Suspense>
+                } />
+                <Route path="/payment-cancel" element={
+                  <React.Suspense fallback={<LoadingSpinner />}>
+                    <PaymentCancel />
+                  </React.Suspense>
+                } />
+                
+                {/* Main Layout */}
                 <Route element={<MainLayout />}>
                   <Route path="/" element={<Home />} />
-                  <Route path="/login" element={<Login />} />
-                  <Route path="/supplements" element={<Supplements />} />
-                  <Route path="/recipes" element={<RecipeSearch />} />
+                  <Route path="/search" element={<RecipeSearch />} />
                   <Route path="/recipe/:id" element={<RecipeDetail />} />
+                  <Route path="/supplements" element={
+                    <React.Suspense fallback={<LoadingSpinner />}>
+                      <Supplements />
+                    </React.Suspense>
+                  } />
+                  <Route path="/cart" element={
+                    <React.Suspense fallback={<LoadingSpinner />}>
+                      <CartPage />
+                    </React.Suspense>
+                  } />
                   <Route path="/contact" element={<Contact />} />
-                  <Route path="/learn" element={<Learn />} />
-                  <Route path="/cart" element={<CartPage />} />
-                  <Route path="/payment-success" element={<PaymentSuccessPage />} />
-                  <Route path="/payment-cancel" element={<PaymentCancelPage />} />
+                  
+                  {/* Protected routes */}
+                  <Route element={<ProtectedRoute />}>
+                    <Route path="/dashboard" element={<DashboardLayout />}>
+                      <Route index element={<Dashboard />} />
+                      <Route path="meals" element={
+                        <React.Suspense fallback={<LoadingSpinner />}>
+                          <MealPlanner />
+                        </React.Suspense>
+                      } />
+                      <Route path="goals" element={
+                        <React.Suspense fallback={<LoadingSpinner />}>
+                          <HealthGoals />
+                        </React.Suspense>
+                      } />
+                      <Route path="progress" element={
+                        <React.Suspense fallback={<LoadingSpinner />}>
+                          <Progress />
+                        </React.Suspense>
+                      } />
+                      <Route path="daily-log" element={
+                        <React.Suspense fallback={<LoadingSpinner />}>
+                          <DailyLog />
+                        </React.Suspense>
+                      } />
+                      <Route path="learn" element={
+                        <React.Suspense fallback={<LoadingSpinner />}>
+                          <Learn />
+                        </React.Suspense>
+                      } />
+                      <Route path="settings" element={
+                        <React.Suspense fallback={<LoadingSpinner />}>
+                          <Settings />
+                        </React.Suspense>
+                      } />
+                      <Route path="profile" element={
+                        <React.Suspense fallback={<LoadingSpinner />}>
+                          <UserProfile />
+                        </React.Suspense>
+                      } />
+                    </Route>
+                    <Route path="/saved" element={<SavedRecipes />} />
+                  </Route>
                 </Route>
 
-                {/* Protected Dashboard Routes with DashboardLayout */}
-                <Route path="/dashboard" element={<DashboardRouteElement />} />
-                <Route path="/dashboard/meals" element={<MealPlannerRouteElement />} />
-                <Route path="/dashboard/log" element={<DailyLogRouteElement />} />
-                <Route path="/dashboard/progress" element={<ProgressRouteElement />} />
-                <Route path="/dashboard/goals" element={<HealthGoalsRouteElement />} />
-                <Route path="/dashboard/saved-recipes" element={<SavedRecipesRouteElement />} />
-                <Route path="/dashboard/profile" element={<UserProfileRouteElement />} />
-                <Route path="/dashboard/settings" element={<SettingsRouteElement />} />
-
-                {/* Fallback for any other route */}
+                {/* Fallback route */}
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
-            </AnimatePresence>
-          </Elements>
-          <ToastContainer
-            position="bottom-right"
-            autoClose={5000}
-            hideProgressBar={false}
-            newestOnTop={false}
-            closeOnClick
-            rtl={false}
-            pauseOnFocusLoss
-            draggable
-            pauseOnHover
-            theme="light"
-          />
+              {isClient && <ToastContainer position="bottom-right" />}
+            </Elements>
+          </CartProvider>
         </AuthProvider>
       </QueryClientProvider>
     </HelmetProvider>
   );
-}
+
+  return isClient ? (
+    <AnimatePresence mode="wait">{content}</AnimatePresence>
+  ) : content;
+};
 
 export default App;
-
