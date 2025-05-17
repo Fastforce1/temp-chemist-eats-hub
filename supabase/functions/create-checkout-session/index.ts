@@ -35,11 +35,29 @@ const getEnvVar = (key: string, fallback?: string): string => {
 
 const FRONTEND_URL = getEnvVar("FRONTEND_URL", "http://localhost:4174");
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": FRONTEND_URL,
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Credentials": "true"
+// List of allowed origins
+const allowedOrigins = [
+  "https://nutrition-chemist.vercel.app",
+  "https://preview-133b621c--nutri-chemist-eats-hub.lovable.app",
+  "http://localhost:4174",
+  "http://localhost:3000"
+];
+
+// Helper function to check if origin is allowed
+const isAllowedOrigin = (origin: string | null): boolean => {
+  if (!origin) return false;
+  return allowedOrigins.some(allowed => origin === allowed);
+};
+
+// Dynamic CORS headers based on the request origin
+const getCorsHeaders = (requestOrigin: string | null) => {
+  const origin = isAllowedOrigin(requestOrigin) ? requestOrigin : FRONTEND_URL;
+  return {
+    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Credentials": "true"
+  };
 };
 
 // Helper function to verify JWT token
@@ -65,7 +83,7 @@ async function verifyToken(token: string) {
 }
 
 // Helper function to send error responses with CORS headers
-const errorResponse = (message: string, status: number = 400) => {
+const errorResponse = (message: string, status: number = 400, requestOrigin: string | null) => {
   console.error(`❌ Error: ${message}`);
   return new Response(
     JSON.stringify({ 
@@ -75,7 +93,7 @@ const errorResponse = (message: string, status: number = 400) => {
     }),
     {
       status,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...getCorsHeaders(requestOrigin), "Content-Type": "application/json" },
     }
   );
 };
@@ -83,16 +101,23 @@ const errorResponse = (message: string, status: number = 400) => {
 console.log("🚀 Function deployed and ready!");
 
 serve(async (req) => {
+  // Get the request origin
+  const origin = req.headers.get("origin");
+  console.log(`📥 Request from origin: ${origin}`);
+
   // Log incoming request details
   console.log(`📥 ${req.method} request to ${new URL(req.url).pathname}`);
 
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response(null, { 
+      status: 204,
+      headers: getCorsHeaders(origin)
+    });
   }
 
   if (req.method !== "POST") {
-    return errorResponse("Method not allowed", 405);
+    return errorResponse("Method not allowed", 405, origin);
   }
 
   try {
@@ -186,11 +211,11 @@ serve(async (req) => {
     const cartItems = body.items;
     if (!cartItems || !Array.isArray(cartItems)) {
       console.error("❌ Invalid cart structure:", cartItems);
-      return errorResponse("Invalid cart structure. Expected array of items.");
+      return errorResponse("Invalid cart structure. Expected array of items.", 400, origin);
     }
 
     if (cartItems.length === 0) {
-      return errorResponse("Cart is empty");
+      return errorResponse("Cart is empty", 400, origin);
     }
 
     console.log("🔍 Validating cart items:", JSON.stringify(cartItems, null, 2));
@@ -201,17 +226,17 @@ serve(async (req) => {
       
       if (!item || typeof item !== 'object') {
         console.error("❌ Invalid item format:", item);
-        return errorResponse("Invalid item format in cart");
+        return errorResponse("Invalid item format in cart", 400, origin);
       }
 
       if (!item.priceId || typeof item.priceId !== 'string') {
         console.error("❌ Missing or invalid priceId:", item);
-        return errorResponse(`Missing or invalid Stripe price ID for item: ${JSON.stringify(item)}`);
+        return errorResponse(`Missing or invalid Stripe price ID for item: ${JSON.stringify(item)}`, 400, origin);
       }
 
       if (!item.quantity || typeof item.quantity !== 'number' || item.quantity <= 0) {
         console.error("❌ Invalid quantity:", item);
-        return errorResponse(`Invalid quantity for item with price ID: ${item.priceId}`);
+        return errorResponse(`Invalid quantity for item with price ID: ${item.priceId}`, 400, origin);
       }
     }
 
@@ -250,7 +275,7 @@ serve(async (req) => {
       id: session.id,
       url: session.url 
     }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...getCorsHeaders(origin), "Content-Type": "application/json" },
     });
   } catch (error) {
     console.error("🔥 Error during checkout session creation:", {
@@ -266,7 +291,7 @@ serve(async (req) => {
       }),
       { 
         status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...getCorsHeaders(origin), "Content-Type": "application/json" },
       }
     );
   }
