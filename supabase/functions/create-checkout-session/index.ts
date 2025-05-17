@@ -49,17 +49,18 @@ const isAllowedOrigin = (origin: string | null): boolean => {
   // Check exact matches first
   if (allowedOrigins.includes(origin)) return true;
   
-  // Check if it's a preview URL from lovable.app
-  if (origin.match(/^https:\/\/preview-[a-zA-Z0-9-]+--nutri-chemist-eats-hub\.lovable\.app$/)) {
-    return true;
+  try {
+    // Check if it's a preview URL from lovable.app
+    return /^https:\/\/preview-[a-zA-Z0-9-]+--nutri-chemist-eats-hub\.lovable\.app$/.test(origin);
+  } catch (error) {
+    console.error("❌ Error checking origin pattern:", error);
+    return false;
   }
-  
-  return false;
 };
 
 // Dynamic CORS headers based on the request origin
-const getCorsHeaders = (requestOrigin: string | null): Record<string, string> => {
-  const origin = isAllowedOrigin(requestOrigin) ? requestOrigin : FRONTEND_URL;
+const getCorsHeaders = (requestOrigin: string | null): HeadersInit => {
+  const origin = isAllowedOrigin(requestOrigin) ? requestOrigin! : FRONTEND_URL;
   return {
     "Access-Control-Allow-Origin": origin,
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -109,30 +110,37 @@ const errorResponse = (message: string, status: number = 400, requestOrigin: str
 console.log("🚀 Function deployed and ready!");
 
 serve(async (req) => {
-  // Get the request origin
-  const origin = req.headers.get("origin");
-  console.log(`📥 Request from origin: ${origin}`);
-
-  // Log incoming request details
-  console.log(`📥 ${req.method} request to ${new URL(req.url).pathname}`);
-
-  // Handle CORS preflight requests
-  if (req.method === "OPTIONS") {
-    return new Response(null, { 
-      status: 204,
-      headers: getCorsHeaders(origin)
-    });
-  }
-
-  if (req.method !== "POST") {
-    return errorResponse("Method not allowed", 405, origin);
-  }
-
   try {
+    // Get the request origin
+    const origin = req.headers.get("origin");
+    console.log(`📥 Request from origin: ${origin}`);
+
+    // Log incoming request details
+    console.log(`📥 ${req.method} request to ${new URL(req.url).pathname}`);
+
+    // Handle CORS preflight requests
+    if (req.method === "OPTIONS") {
+      return new Response(null, { 
+        status: 204,
+        headers: getCorsHeaders(origin)
+      });
+    }
+
+    if (req.method !== "POST") {
+      return errorResponse("Method not allowed", 405, origin);
+    }
+
+    // Validate Stripe secret key is available
+    const stripeKey = getEnvVar("STRIPE_SECRET_KEY");
+    if (!stripeKey) {
+      console.error("❌ Missing Stripe secret key");
+      return errorResponse("Internal server error", 500, origin);
+    }
+
     console.log("📥 Incoming request to create checkout session");
 
     // Initialize Stripe
-    const stripe = new Stripe(getEnvVar("STRIPE_SECRET_KEY"), {
+    const stripe = new Stripe(stripeKey, {
       apiVersion: "2022-11-15",
     });
 
@@ -213,7 +221,11 @@ serve(async (req) => {
     });
 
     console.log("📦 Reading request body...");
-    const body = await req.json();
+    const body = await req.json().catch(error => {
+      console.error("❌ Error parsing request body:", error);
+      throw new Error("Invalid request body");
+    });
+    
     console.log("🛒 Raw request body:", JSON.stringify(body, null, 2));
 
     const cartItems = body.items;
@@ -274,17 +286,21 @@ serve(async (req) => {
       sessionData.customer = customerId;
     }
 
-    console.log("📝 Creating session with data:", JSON.stringify(sessionData, null, 2));
-    const session = await stripe.checkout.sessions.create(sessionData);
+    try {
+      console.log("📝 Creating session with data:", JSON.stringify(sessionData, null, 2));
+      const session = await stripe.checkout.sessions.create(sessionData);
+      console.log("✅ Session created:", session.id);
 
-    console.log("✅ Session created:", session.id);
-
-    return new Response(JSON.stringify({ 
-      id: session.id,
-      url: session.url 
-    }), {
-      headers: { ...getCorsHeaders(origin), "Content-Type": "application/json" },
-    });
+      return new Response(JSON.stringify({ 
+        id: session.id,
+        url: session.url 
+      }), {
+        headers: { ...getCorsHeaders(origin), "Content-Type": "application/json" },
+      });
+    } catch (error) {
+      console.error("❌ Error creating Stripe session:", error);
+      return errorResponse("Failed to create checkout session", 500, origin);
+    }
   } catch (error) {
     console.error("🔥 Error during checkout session creation:", {
       message: error?.message,
