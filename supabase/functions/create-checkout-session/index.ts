@@ -38,7 +38,6 @@ const FRONTEND_URL = getEnvVar("FRONTEND_URL", "http://localhost:4174");
 // List of allowed origins
 const allowedOrigins = [
   "https://nutrition-chemist.vercel.app",
-  "https://preview-133b621c--nutri-chemist-eats-hub.lovable.app",
   "http://localhost:4174",
   "http://localhost:3000"
 ];
@@ -46,11 +45,20 @@ const allowedOrigins = [
 // Helper function to check if origin is allowed
 const isAllowedOrigin = (origin: string | null): boolean => {
   if (!origin) return false;
-  return allowedOrigins.some(allowed => origin === allowed);
+  
+  // Check exact matches first
+  if (allowedOrigins.includes(origin)) return true;
+  
+  // Check if it's a preview URL from lovable.app
+  if (origin.match(/^https:\/\/preview-[a-zA-Z0-9-]+--nutri-chemist-eats-hub\.lovable\.app$/)) {
+    return true;
+  }
+  
+  return false;
 };
 
 // Dynamic CORS headers based on the request origin
-const getCorsHeaders = (requestOrigin: string | null) => {
+const getCorsHeaders = (requestOrigin: string | null): Record<string, string> => {
   const origin = isAllowedOrigin(requestOrigin) ? requestOrigin : FRONTEND_URL;
   return {
     "Access-Control-Allow-Origin": origin,
