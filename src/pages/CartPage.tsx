@@ -118,36 +118,33 @@ const CartPageContent: React.FC = () => {
       // Map cart items to Stripe format with price IDs
       const stripeItems = items.map(item => {
         try {
+          if (!item?.supplement?.name) {
+            throw new Error('Invalid item: missing supplement name');
+          }
+
           console.log('Processing item for Stripe:', {
-            item,
             supplementName: item.supplement.name,
-            supplementId: item.supplement.id,
             quantity: item.quantity
           });
           
           const priceId = getStripePriceId(item.supplement.name);
+          if (!priceId) {
+            throw new Error(`No Stripe price ID found for ${item.supplement.name}`);
+          }
+
           console.log('Got price ID:', {
             supplementName: item.supplement.name,
             priceId,
             quantity: item.quantity
           });
           
-          if (!priceId) {
-            throw new Error(`No Stripe price ID found for ${item.supplement.name}`);
-          }
-          
           return {
             priceId,
             quantity: item.quantity,
           };
         } catch (error) {
-          console.error('Error processing item for Stripe:', {
-            error,
-            item,
-            supplementName: item?.supplement?.name,
-            quantity: item?.quantity
-          });
-          throw new Error(`Failed to get Stripe price for ${item?.supplement?.name || 'unknown supplement'}`);
+          console.error('Error processing item for Stripe:', error);
+          throw error;
         }
       });
 
@@ -156,9 +153,7 @@ const CartPageContent: React.FC = () => {
         hasAuthToken: !!session?.access_token,
         itemDetails: stripeItems.map(item => ({
           priceId: item.priceId,
-          quantity: item.quantity,
-          isValidPriceId: typeof item.priceId === 'string' && item.priceId.length > 0,
-          isValidQuantity: typeof item.quantity === 'number' && item.quantity > 0
+          quantity: item.quantity
         }))
       });
       

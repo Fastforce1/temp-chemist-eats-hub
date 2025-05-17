@@ -143,7 +143,7 @@ serve(async (req) => {
 
     console.log("📦 Reading request body...");
     const body = await req.json();
-    console.log("🛒 Cart body:", JSON.stringify(body, null, 2));
+    console.log("🛒 Raw request body:", JSON.stringify(body, null, 2));
 
     const cartItems = body.items;
     if (!cartItems || !Array.isArray(cartItems)) {
@@ -178,26 +178,10 @@ serve(async (req) => {
     }
 
     // Map validated items to Stripe format with additional error handling
-    const lineItems = cartItems.map((item, index) => {
-      try {
-        console.log(`🔄 Processing item ${index}:`, JSON.stringify(item, null, 2));
-        
-        if (!item.priceId) {
-          throw new Error(`Missing price ID for item at index ${index}`);
-        }
-
-        const lineItem = {
-          price: item.priceId,
-          quantity: item.quantity,
-        };
-
-        console.log(`✅ Created line item ${index}:`, JSON.stringify(lineItem, null, 2));
-        return lineItem;
-      } catch (error) {
-        console.error(`❌ Error processing item ${index}:`, error);
-        throw error;
-      }
-    });
+    const lineItems = cartItems.map((item) => ({
+      price: item.priceId,
+      quantity: item.quantity,
+    }));
 
     console.log("💳 Creating Stripe checkout session with items:", JSON.stringify(lineItems, null, 2));
     
