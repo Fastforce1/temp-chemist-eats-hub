@@ -99,27 +99,54 @@ const CartPageContent: React.FC = () => {
       // Map cart items to Stripe format with price IDs
       const stripeItems = items.map(item => {
         try {
-          console.log('Processing item for Stripe:', item);
+          console.log('Processing item for Stripe:', {
+            item,
+            supplementName: item?.supplement?.name,
+            supplementId: item?.supplement?.id,
+            quantity: item?.quantity
+          });
+          
           if (!item?.supplement?.name) {
             throw new Error('Invalid supplement: missing name');
           }
+          
           const priceId = getStripePriceId(item.supplement.name);
-          console.log('Got price ID:', priceId, 'for supplement:', item.supplement.name);
+          console.log('Got price ID:', {
+            supplementName: item.supplement.name,
+            priceId,
+            quantity: item.quantity
+          });
+          
           if (!priceId) {
             throw new Error(`No Stripe price ID found for ${item.supplement.name}`);
           }
+          
           return {
             priceId,
             quantity: item.quantity,
           };
         } catch (error) {
-          console.error('Error processing item for Stripe:', error);
+          console.error('Error processing item for Stripe:', {
+            error,
+            item,
+            supplementName: item?.supplement?.name,
+            quantity: item?.quantity
+          });
           throw new Error(`Failed to get Stripe price for ${item?.supplement?.name || 'unknown supplement'}`);
         }
       });
 
-      console.log('Prepared Stripe items:', stripeItems);
-      console.log('Sending checkout request to Supabase function...');
+      console.log('Prepared Stripe items:', {
+        items: stripeItems,
+        count: stripeItems.length,
+        hasValidPriceIds: stripeItems.every(item => item.priceId && typeof item.priceId === 'string'),
+        hasValidQuantities: stripeItems.every(item => item.quantity && item.quantity > 0)
+      });
+      
+      console.log('Sending checkout request to Supabase function...', {
+        items: stripeItems,
+        hasAuthToken: !!session?.access_token
+      });
       
       const { data, error: checkoutError } = await supabase.functions.invoke('create-checkout-session', {
         body: { items: stripeItems },

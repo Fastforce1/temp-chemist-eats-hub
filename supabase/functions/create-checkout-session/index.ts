@@ -134,17 +134,30 @@ serve(async (req) => {
     }
 
     console.log("🔍 Validating cart items:", cartItems);
-    const lineItems = cartItems.map((item: any) => {
-      if (!item.priceId) {
-        console.error("❌ Invalid item:", item);
-        throw new Error(`No Stripe price ID provided for item`);
+    
+    // Validate each item has required properties
+    for (const item of cartItems) {
+      if (!item || typeof item !== 'object') {
+        console.error("❌ Invalid item format:", item);
+        return errorResponse("Invalid item format in cart");
       }
 
-      return {
-        price: item.priceId,
-        quantity: item.quantity,
-      };
-    });
+      if (!item.priceId || typeof item.priceId !== 'string') {
+        console.error("❌ Missing or invalid priceId:", item);
+        return errorResponse(`Missing or invalid Stripe price ID for item: ${JSON.stringify(item)}`);
+      }
+
+      if (!item.quantity || typeof item.quantity !== 'number' || item.quantity <= 0) {
+        console.error("❌ Invalid quantity:", item);
+        return errorResponse(`Invalid quantity for item with price ID: ${item.priceId}`);
+      }
+    }
+
+    // Map validated items to Stripe format
+    const lineItems = cartItems.map((item) => ({
+      price: item.priceId,
+      quantity: item.quantity,
+    }));
 
     console.log("💳 Creating Stripe checkout session with items:", lineItems);
     const session = await stripe.checkout.sessions.create({
