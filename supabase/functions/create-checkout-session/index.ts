@@ -39,7 +39,8 @@ const FRONTEND_URL = getEnvVar("FRONTEND_URL", "http://localhost:4174");
 const allowedOrigins = [
   "https://nutrition-chemist.vercel.app",
   "http://localhost:4174",
-  "http://localhost:3000"
+  "http://localhost:3000",
+  "https://preview-1a285953--nutri-chemist-eats-hub.lovable.app" // Add current preview URL
 ];
 
 // Helper function to check if origin is allowed
@@ -51,7 +52,7 @@ const isAllowedOrigin = (origin: string | null): boolean => {
   
   try {
     // Check if it's a preview URL from lovable.app
-    return /^https:\/\/preview-[a-zA-Z0-9-]+--nutri-chemist-eats-hub\.lovable\.app$/.test(origin);
+    return /^https:\/\/preview-[a-f0-9]+--nutri-chemist-eats-hub\.lovable\.app$/.test(origin);
   } catch (error) {
     console.error("❌ Error checking origin pattern:", error);
     return false;
@@ -60,9 +61,9 @@ const isAllowedOrigin = (origin: string | null): boolean => {
 
 // Dynamic CORS headers based on the request origin
 const getCorsHeaders = (requestOrigin: string | null): HeadersInit => {
-  const origin = isAllowedOrigin(requestOrigin) ? requestOrigin! : FRONTEND_URL;
+  // Always return the headers, even if origin is not allowed
   return {
-    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Origin": requestOrigin || "*",
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Access-Control-Allow-Credentials": "true"
@@ -115,26 +116,62 @@ serve(async (req) => {
     const origin = req.headers.get("origin");
     console.log(`📥 Request from origin: ${origin}`);
 
-    // Log incoming request details
-    console.log(`📥 ${req.method} request to ${new URL(req.url).pathname}`);
+    // Always include CORS headers in the response
+    const corsHeaders = getCorsHeaders(origin);
 
-    // Handle CORS preflight requests
+    // Handle CORS preflight requests first
     if (req.method === "OPTIONS") {
       return new Response(null, { 
         status: 204,
-        headers: getCorsHeaders(origin)
+        headers: corsHeaders
       });
     }
 
+    // Validate origin before proceeding
+    if (!isAllowedOrigin(origin)) {
+      console.error(`❌ Origin not allowed: ${origin}`);
+      return new Response(
+        JSON.stringify({
+          error: "Origin not allowed",
+          status: 403,
+          timestamp: new Date().toISOString()
+        }),
+        {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
+        }
+      );
+    }
+
     if (req.method !== "POST") {
-      return errorResponse("Method not allowed", 405, origin);
+      return new Response(
+        JSON.stringify({
+          error: "Method not allowed",
+          status: 405,
+          timestamp: new Date().toISOString()
+        }),
+        {
+          status: 405,
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
+        }
+      );
     }
 
     // Validate Stripe secret key is available
     const stripeKey = getEnvVar("STRIPE_SECRET_KEY");
     if (!stripeKey) {
       console.error("❌ Missing Stripe secret key");
-      return errorResponse("Internal server error", 500, origin);
+      return new Response(
+        JSON.stringify({
+          error: "Internal server error",
+          status: 500,
+          timestamp: new Date().toISOString()
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
+        }
+      );
     }
 
     console.log("📥 Incoming request to create checkout session");
@@ -295,7 +332,7 @@ serve(async (req) => {
         id: session.id,
         url: session.url 
       }), {
-        headers: { ...getCorsHeaders(origin), "Content-Type": "application/json" },
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     } catch (error) {
       console.error("❌ Error creating Stripe session:", error);
