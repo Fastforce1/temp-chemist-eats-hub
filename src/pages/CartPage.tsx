@@ -69,11 +69,19 @@ const CartPageContent: React.FC = () => {
         throw new Error('Your cart is empty');
       }
 
-      // Get the current session
-      const { data: { session } } = await supabase.auth.getSession();
-      console.log('Got session:', session);
+      // Get the current session and validate authentication
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      console.log('Got session:', {
+        hasSession: !!session,
+        hasAccessToken: !!session?.access_token,
+        error: sessionError
+      });
       
-      if (!session?.access_token) {
+      // For guest checkout, proceed without authentication
+      if (!session?.access_token && !user) {
+        console.log('Proceeding with guest checkout');
+      } else if (!session?.access_token) {
+        console.error('No valid session found');
         throw new Error('Authentication error. Please try logging in again.');
       }
 
@@ -132,13 +140,6 @@ const CartPageContent: React.FC = () => {
         }
       });
 
-      console.log('Prepared Stripe items:', {
-        items: stripeItems,
-        count: stripeItems.length,
-        hasValidPriceIds: stripeItems.every(item => item.priceId && typeof item.priceId === 'string'),
-        hasValidQuantities: stripeItems.every(item => item.quantity && item.quantity > 0)
-      });
-      
       console.log('Sending checkout request to Supabase function...', {
         items: stripeItems,
         hasAuthToken: !!session?.access_token,
@@ -150,11 +151,15 @@ const CartPageContent: React.FC = () => {
         }))
       });
       
+      // Prepare request headers
+      const headers: { Authorization?: string } = {};
+      if (session?.access_token) {
+        headers.Authorization = `Bearer ${session.access_token}`;
+      }
+      
       const { data, error: checkoutError } = await supabase.functions.invoke('create-checkout-session', {
         body: { items: stripeItems },
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        }
+        headers
       });
 
       console.log('Received response:', { data, checkoutError });

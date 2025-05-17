@@ -75,49 +75,50 @@ serve(async (req) => {
       apiVersion: "2022-11-15",
     });
 
-    let userId: string;
+    let userId: string = crypto.randomUUID(); // Initialize with a guest ID by default
     let customerId: string | undefined;
 
     // Handle authentication if available
     const authHeader = req.headers.get("Authorization");
     if (authHeader) {
-      const supabaseClient = createClient(
-        Deno.env.get("SUPABASE_URL")!,
-        Deno.env.get("SUPABASE_ANON_KEY")!,
-        {
-          global: { headers: { Authorization: authHeader } },
-        }
-      );
-
-      console.log("🔐 Getting authenticated user...");
-      const { data: userData, error: userError } = await supabaseClient.auth.getUser();
-      if (userError) {
-        console.error("❌ Auth error:", userError.message);
-        return errorResponse("Authentication failed", 401);
-      }
-
-      const user = userData.user;
-      if (!user || !user.email) {
-        return errorResponse("Invalid user data", 401);
-      }
-
-      userId = user.id;
-
-      // Create Stripe customer directly without profile table
-      console.log("🙋 Creating new Stripe customer...");
       try {
-        const customer = await stripe.customers.create({ email: user.email });
-        customerId = customer.id;
+        console.log("🔐 Processing authenticated checkout");
+        const supabaseClient = createClient(
+          Deno.env.get("SUPABASE_URL")!,
+          Deno.env.get("SUPABASE_ANON_KEY")!,
+          {
+            global: { headers: { Authorization: authHeader } },
+          }
+        );
+
+        console.log("🔐 Getting authenticated user...");
+        const { data: userData, error: userError } = await supabaseClient.auth.getUser();
+        if (userError) {
+          console.error("❌ Auth error:", userError.message);
+          // Don't return error, fall back to guest checkout
+          console.log("⚠️ Falling back to guest checkout");
+        } else if (userData?.user) {
+          userId = userData.user.id; // Override the guest ID with the authenticated user's ID
+          if (userData.user.email) {
+            // Create Stripe customer
+            console.log("🙋 Creating new Stripe customer...");
+            try {
+              const customer = await stripe.customers.create({ email: userData.user.email });
+              customerId = customer.id;
+              console.log("✅ Created Stripe customer:", customer.id);
+            } catch (error) {
+              console.error("❌ Error creating Stripe customer:", error);
+              // Continue without customer ID
+            }
+          }
+        }
       } catch (error) {
-        console.error("❌ Error creating Stripe customer:", error);
-        // Continue without customer ID
+        console.error("❌ Error processing authentication:", error);
+        // Continue as guest with the default guest ID
+        console.log("⚠️ Continuing as guest due to auth error");
       }
-    } else if (ALLOW_GUEST_CHECKOUT) {
-      // Generate temporary guest ID for guest checkout
-      userId = crypto.randomUUID();
-      console.log("👥 Processing as guest:", userId);
     } else {
-      return errorResponse("Authentication required", 401);
+      console.log("👥 Processing as guest:", userId);
     }
 
     console.log("📦 Reading request body...");
@@ -188,7 +189,8 @@ serve(async (req) => {
       success_url: `${FRONTEND_URL}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${FRONTEND_URL}/cart`,
       metadata: {
-        user_id: userId
+        user_id: userId,
+        is_guest: !customerId
       }
     };
 
@@ -197,7 +199,7 @@ serve(async (req) => {
       sessionData.customer = customerId;
     }
 
-    console.log("📝 Creating session with data:", sessionData);
+    console.log("📝 Creating session with data:", JSON.stringify(sessionData, null, 2));
     const session = await stripe.checkout.sessions.create(sessionData);
 
     console.log("✅ Session created:", session.id);
