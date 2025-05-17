@@ -79,12 +79,13 @@ serve(async (req) => {
     let customerId: string | undefined;
 
     // Handle authentication if available
-    if (req.headers.get("Authorization")) {
+    const authHeader = req.headers.get("Authorization");
+    if (authHeader) {
       const supabaseClient = createClient(
         Deno.env.get("SUPABASE_URL")!,
         Deno.env.get("SUPABASE_ANON_KEY")!,
         {
-          global: { headers: { Authorization: req.headers.get("Authorization")! } },
+          global: { headers: { Authorization: authHeader } },
         }
       );
 
@@ -112,7 +113,7 @@ serve(async (req) => {
         // Continue without customer ID
       }
     } else if (ALLOW_GUEST_CHECKOUT) {
-      // Generate temporary guest ID
+      // Generate temporary guest ID for guest checkout
       userId = crypto.randomUUID();
       console.log("👥 Processing as guest:", userId);
     } else {

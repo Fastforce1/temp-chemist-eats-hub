@@ -29,12 +29,23 @@ const CartPageContent: React.FC = () => {
         total,
         items,
         hasItems: items && items.length > 0,
-        itemsValid: items?.every(item => item?.supplement?.id && item?.quantity > 0),
+        itemsValid: items?.every(item => {
+          const isValid = item?.supplement?.id && item?.quantity > 0;
+          if (!isValid) {
+            console.error('Invalid item detected:', {
+              item,
+              hasSupplementObject: !!item?.supplement,
+              supplementId: item?.supplement?.id,
+              quantity: item?.quantity
+            });
+          }
+          return isValid;
+        }),
       });
 
       // Validate cart items
       if (items?.some(item => !item?.supplement?.id || item?.quantity <= 0)) {
-        console.error('Invalid cart items detected:', items);
+        console.error('Invalid cart items detected. Full cart state:', items);
         setError(new Error('Some items in your cart are invalid'));
       }
     } catch (err) {
@@ -50,21 +61,36 @@ const CartPageContent: React.FC = () => {
       total,
       isAuthenticated: !!user,
       userId: user?.id,
+      cartItems: items
     });
 
     try {
-      if (items.length === 0) {
+      if (!items || items.length === 0) {
         throw new Error('Your cart is empty');
       }
 
       // Get the current session
       const { data: { session } } = await supabase.auth.getSession();
+      console.log('Got session:', session);
+      
       if (!session?.access_token) {
         throw new Error('Authentication error. Please try logging in again.');
       }
 
       // Validate cart items before sending
-      const invalidItems = items.filter(item => !item?.supplement || !item?.quantity);
+      const invalidItems = items.filter(item => {
+        const isValid = item?.supplement && item?.quantity > 0;
+        if (!isValid) {
+          console.error('Invalid item found:', {
+            item,
+            hasSupplementObject: !!item?.supplement,
+            supplementId: item?.supplement?.id,
+            quantity: item?.quantity
+          });
+        }
+        return !isValid;
+      });
+
       if (invalidItems.length > 0) {
         console.error('Invalid cart items detected:', invalidItems);
         throw new Error('Some items in your cart are invalid. Please try refreshing the page.');
@@ -73,7 +99,12 @@ const CartPageContent: React.FC = () => {
       // Map cart items to Stripe format with price IDs
       const stripeItems = items.map(item => {
         try {
+          console.log('Processing item for Stripe:', item);
+          if (!item?.supplement?.name) {
+            throw new Error('Invalid supplement: missing name');
+          }
           const priceId = getStripePriceId(item.supplement.name);
+          console.log('Got price ID:', priceId, 'for supplement:', item.supplement.name);
           if (!priceId) {
             throw new Error(`No Stripe price ID found for ${item.supplement.name}`);
           }
@@ -82,8 +113,8 @@ const CartPageContent: React.FC = () => {
             quantity: item.quantity,
           };
         } catch (error) {
-          console.error('Error getting price ID:', error);
-          throw new Error(`Failed to get Stripe price for ${item.supplement.name}`);
+          console.error('Error processing item for Stripe:', error);
+          throw new Error(`Failed to get Stripe price for ${item?.supplement?.name || 'unknown supplement'}`);
         }
       });
 

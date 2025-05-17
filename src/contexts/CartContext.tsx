@@ -21,39 +21,81 @@ const CART_STORAGE_KEY = 'nutrition-chemist-cart';
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 const isValidSupplement = (supplement: any): supplement is Supplement => {
-  return (
-    supplement &&
-    typeof supplement === 'object' &&
-    typeof supplement.id === 'string' &&
-    typeof supplement.name === 'string' &&
-    typeof supplement.price === 'number'
-  );
+  console.log('Validating supplement:', supplement);
+  
+  if (!supplement) {
+    console.error('Supplement is null or undefined');
+    return false;
+  }
+
+  if (typeof supplement !== 'object') {
+    console.error('Supplement is not an object:', typeof supplement);
+    return false;
+  }
+
+  const hasValidId = typeof supplement.id === 'string' && supplement.id.length > 0;
+  const hasValidName = typeof supplement.name === 'string' && supplement.name.length > 0;
+  const hasValidPrice = typeof supplement.price === 'number' && !isNaN(supplement.price);
+
+  console.log('Supplement validation results:', {
+    hasValidId,
+    hasValidName,
+    hasValidPrice,
+    id: supplement.id,
+    name: supplement.name,
+    price: supplement.price
+  });
+
+  return hasValidId && hasValidName && hasValidPrice;
 };
 
 const isValidCartItem = (item: any): item is CartItem => {
-  return (
-    item &&
-    typeof item === 'object' &&
-    isValidSupplement(item.supplement) &&
-    typeof item.quantity === 'number' &&
-    item.quantity > 0
-  );
+  console.log('Validating cart item:', item);
+  
+  if (!item) {
+    console.error('Cart item is null or undefined');
+    return false;
+  }
+
+  if (typeof item !== 'object') {
+    console.error('Cart item is not an object:', typeof item);
+    return false;
+  }
+
+  const hasValidSupplement = isValidSupplement(item.supplement);
+  const hasValidQuantity = typeof item.quantity === 'number' && item.quantity > 0;
+
+  console.log('Cart item validation results:', {
+    hasValidSupplement,
+    hasValidQuantity,
+    quantity: item.quantity
+  });
+
+  return hasValidSupplement && hasValidQuantity;
 };
 
 const validateCartData = (data: any): CartItem[] => {
+  console.log('Validating cart data:', data);
+
   if (!Array.isArray(data)) {
     console.error('Invalid cart data: not an array', data);
     return [];
   }
 
   const validItems = data.filter(item => {
-    const isValid = isValidCartItem(item);
-    if (!isValid) {
-      console.error('Invalid cart item:', item);
+    try {
+      const isValid = isValidCartItem(item);
+      if (!isValid) {
+        console.error('Invalid cart item:', item);
+      }
+      return isValid;
+    } catch (error) {
+      console.error('Error validating cart item:', error);
+      return false;
     }
-    return isValid;
   });
 
+  console.log('Validated cart items:', validItems);
   return validItems;
 };
 
@@ -103,6 +145,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [items]);
 
   const addToCart = useCallback((supplement: Supplement, quantity: number = 1) => {
+    console.log('Adding to cart:', { supplement, quantity });
+    
     if (!isValidSupplement(supplement)) {
       console.error('Invalid supplement:', supplement);
       return;
@@ -113,7 +157,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
-    console.log('Adding to cart:', { supplement, quantity });
     setItems(currentItems => {
       const existingItem = currentItems.find(item => item.supplement.id === supplement.id);
       
@@ -132,12 +175,13 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const removeFromCart = useCallback((supplementId: string) => {
+    console.log('Removing from cart:', supplementId);
+    
     if (typeof supplementId !== 'string') {
       console.error('Invalid supplement ID:', supplementId);
       return;
     }
 
-    console.log('Removing from cart:', supplementId);
     setItems(currentItems => {
       const newItems = currentItems.filter(item => item.supplement.id !== supplementId);
       console.log('Updated cart after removal:', newItems);
@@ -146,6 +190,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const updateQuantity = useCallback((supplementId: string, quantity: number) => {
+    console.log('Updating quantity:', { supplementId, quantity });
+    
     if (typeof supplementId !== 'string') {
       console.error('Invalid supplement ID:', supplementId);
       return;
@@ -156,13 +202,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
     
-    console.log('Updating quantity:', { supplementId, quantity });
     setItems(currentItems => {
       const newItems = currentItems.map(item =>
         item.supplement.id === supplementId
           ? { ...item, quantity }
           : item
-    );
+      );
       console.log('Updated cart after quantity change:', newItems);
       return newItems;
     });
@@ -175,7 +220,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const total = items.reduce(
     (sum, item) => {
-      if (!isValidCartItem(item)) return sum;
+      if (!isValidCartItem(item)) {
+        console.warn('Invalid item found while calculating total:', item);
+        return sum;
+      }
       return sum + item.supplement.price * item.quantity;
     },
     0
@@ -183,7 +231,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const itemCount = items.reduce(
     (sum, item) => {
-      if (!isValidCartItem(item)) return sum;
+      if (!isValidCartItem(item)) {
+        console.warn('Invalid item found while calculating item count:', item);
+        return sum;
+      }
       return sum + item.quantity;
     },
     0
