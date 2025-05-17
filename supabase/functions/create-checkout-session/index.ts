@@ -160,17 +160,26 @@ serve(async (req) => {
     }));
 
     console.log("💳 Creating Stripe checkout session with items:", lineItems);
-    const session = await stripe.checkout.sessions.create({
+    
+    // Prepare session data
+    const sessionData: any = {
       payment_method_types: ["card"],
       mode: "payment",
       line_items: lineItems,
       success_url: `${FRONTEND_URL}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${FRONTEND_URL}/cart`,
-      customer: customerId,
       metadata: {
         user_id: userId
       }
-    });
+    };
+
+    // Only add customer if we have a valid customer ID
+    if (customerId) {
+      sessionData.customer = customerId;
+    }
+
+    console.log("📝 Creating session with data:", sessionData);
+    const session = await stripe.checkout.sessions.create(sessionData);
 
     console.log("✅ Session created:", session.id);
 
