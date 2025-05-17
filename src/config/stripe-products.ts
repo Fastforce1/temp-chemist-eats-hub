@@ -26,11 +26,11 @@ export const getStripePriceId = (supplementName: string): string => {
   if (normalizedName.includes('creatine')) {
     return STRIPE_PRICE_IDS.CREATINE;
   }
+  if (normalizedName.includes('collagen') && normalizedName.includes('capsule')) {
+    return STRIPE_PRICE_IDS.COLLAGEN_CAPSULES;
+  }
   if (normalizedName.includes('collagen') && normalizedName.includes('powder')) {
     return STRIPE_PRICE_IDS.COLLAGEN_POWDER;
-  }
-  if (normalizedName.includes('collagen')) {
-    return STRIPE_PRICE_IDS.COLLAGEN_CAPSULES;
   }
   if (normalizedName.includes('magnesium')) {
     return STRIPE_PRICE_IDS.MAGNESIUM;
@@ -41,12 +41,13 @@ export const getStripePriceId = (supplementName: string): string => {
   if (normalizedName.includes('vitamin d3')) {
     return STRIPE_PRICE_IDS.VITAMIN_D3;
   }
-  if (normalizedName.includes('lions mane')) {
+  if (normalizedName.includes('lion') && normalizedName.includes('mane')) {
     return STRIPE_PRICE_IDS.LIONS_MANE;
   }
   if (normalizedName.includes('biotin')) {
     return STRIPE_PRICE_IDS.BIOTIN;
   }
   
+  console.error(`No Stripe price ID found for supplement: ${supplementName}`);
   throw new Error(`No Stripe price ID found for supplement: ${supplementName}`);
 }; 

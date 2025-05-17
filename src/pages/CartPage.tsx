@@ -74,11 +74,15 @@ const CartPageContent: React.FC = () => {
       const stripeItems = items.map(item => {
         try {
           const priceId = getStripePriceId(item.supplement.name);
+          if (!priceId) {
+            throw new Error(`No Stripe price ID found for ${item.supplement.name}`);
+          }
           return {
             priceId,
             quantity: item.quantity,
           };
         } catch (error) {
+          console.error('Error getting price ID:', error);
           throw new Error(`Failed to get Stripe price for ${item.supplement.name}`);
         }
       });
@@ -110,6 +114,7 @@ const CartPageContent: React.FC = () => {
       const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';
       toast.error(errorMessage);
       setError(err instanceof Error ? err : new Error(errorMessage));
+    } finally {
       setIsLoading(false);
     }
   };

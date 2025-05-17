@@ -132,8 +132,10 @@ serve(async (req) => {
       return errorResponse("Cart is empty");
     }
 
+    console.log("🔍 Validating cart items:", cartItems);
     const lineItems = cartItems.map((item: any) => {
       if (!item.priceId) {
+        console.error("❌ Invalid item:", item);
         throw new Error(`No Stripe price ID provided for item`);
       }
 
@@ -143,7 +145,7 @@ serve(async (req) => {
       };
     });
 
-    console.log("💳 Creating Stripe checkout session...");
+    console.log("💳 Creating Stripe checkout session with items:", lineItems);
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       mode: "payment",
