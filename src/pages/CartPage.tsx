@@ -7,6 +7,7 @@ import { supabase } from '../integrations/supabase/client';
 import { toast } from 'react-toastify';
 import { Head } from '../components/SEO/Head';
 import ErrorBoundary from '../components/ErrorBoundary';
+import { getStripePriceId } from '../config/stripe-products';
 
 const CartPageContent: React.FC = () => {
   const navigate = useNavigate();
@@ -69,23 +70,24 @@ const CartPageContent: React.FC = () => {
         throw new Error('Some items in your cart are invalid. Please try refreshing the page.');
       }
 
-      const cartDetails = {
-        items: items.map(item => ({
-          supplement: {
-            id: item.supplement.id,
-            name: item.supplement.name,
-            price: item.supplement.price,
-            image: item.supplement.image,
-          },
-          quantity: item.quantity,
-        })),
-      };
+      // Map cart items to Stripe format with price IDs
+      const stripeItems = items.map(item => {
+        try {
+          const priceId = getStripePriceId(item.supplement.name);
+          return {
+            priceId,
+            quantity: item.quantity,
+          };
+        } catch (error) {
+          throw new Error(`Failed to get Stripe price for ${item.supplement.name}`);
+        }
+      });
 
-      console.log('Prepared cart details:', cartDetails);
+      console.log('Prepared Stripe items:', stripeItems);
       console.log('Sending checkout request to Supabase function...');
       
       const { data, error: checkoutError } = await supabase.functions.invoke('create-checkout-session', {
-        body: cartDetails,
+        body: { items: stripeItems },
         headers: {
           Authorization: `Bearer ${session.access_token}`,
         }
