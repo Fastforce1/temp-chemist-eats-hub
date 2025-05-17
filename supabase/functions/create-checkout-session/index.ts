@@ -95,30 +95,61 @@ serve(async (req) => {
           console.log("❌ Invalid Authorization header format, proceeding as guest");
           isGuest = true;
         } else {
-          const supabaseClient = createClient(
-            Deno.env.get("SUPABASE_URL")!,
-            Deno.env.get("SUPABASE_ANON_KEY")!,
-            {
-              global: { 
-                headers: { Authorization: authHeader }
-              },
-            }
-          );
+          // Extract and validate the token
+          const token = authHeader.split(' ')[1];
+          console.log("🔑 Validating token format...");
 
-          console.log("🔐 Getting authenticated user...");
-          const { data: { user: authUser }, error: userError } = await supabaseClient.auth.getUser();
-          
-          if (userError) {
-            console.error("❌ Auth error:", userError.message);
-            console.log("⚠️ Auth failed, proceeding with guest checkout");
-            isGuest = true;
-          } else if (!authUser?.id) {
-            console.error("❌ No user ID in auth response");
-            console.log("⚠️ No user ID, proceeding with guest checkout");
-            isGuest = true;
-          } else {
+          try {
+            // Basic JWT structure validation
+            const [header, payload, signature] = token.split('.');
+            if (!header || !payload || !signature) {
+              throw new Error('Invalid JWT format');
+            }
+
+            // Decode and check payload
+            const decodedPayload = JSON.parse(atob(payload));
+            console.log("📜 Token payload:", {
+              sub: decodedPayload.sub,
+              role: decodedPayload.role,
+              exp: decodedPayload.exp,
+              aud: decodedPayload.aud
+            });
+
+            if (!decodedPayload.sub) {
+              throw new Error('Missing sub claim');
+            }
+
+            // Initialize Supabase client with validated token
+            const supabaseClient = createClient(
+              Deno.env.get("SUPABASE_URL")!,
+              Deno.env.get("SUPABASE_ANON_KEY")!,
+              {
+                global: { 
+                  headers: { Authorization: authHeader }
+                },
+                auth: {
+                  persistSession: false
+                }
+              }
+            );
+
+            console.log("🔐 Getting authenticated user...");
+            const { data: { user: authUser }, error: userError } = await supabaseClient.auth.getUser();
+            
+            if (userError) {
+              console.error("❌ Auth error:", userError.message);
+              throw new Error(userError.message);
+            }
+
+            if (!authUser?.id) {
+              console.error("❌ No user ID in auth response");
+              throw new Error('Invalid user authentication');
+            }
+
+            // Successfully authenticated
             userId = authUser.id;
             isGuest = false;
+            console.log("✅ Authentication successful:", { userId });
             
             if (authUser.email) {
               try {
@@ -148,6 +179,10 @@ serve(async (req) => {
                 // Continue without customer ID
               }
             }
+          } catch (tokenError) {
+            console.error("❌ Token validation error:", tokenError.message);
+            console.log("⚠️ Invalid token, proceeding with guest checkout");
+            isGuest = true;
           }
         }
       } catch (error) {

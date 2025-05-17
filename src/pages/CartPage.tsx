@@ -71,43 +71,47 @@ const CartPageContent: React.FC = () => {
 
       // Get the current session and validate authentication
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      console.log('Got session:', {
-        hasSession: !!session,
-        hasAccessToken: !!session?.access_token,
-        error: sessionError
-      });
       
+      // Initialize checkout mode
+      let isGuestCheckout = true;
+      let validatedSession = session;
+
       if (sessionError) {
         console.error('Session error:', sessionError);
         console.log('Proceeding with guest checkout due to session error');
-      }
-
-      // For guest checkout, proceed without authentication
-      let isGuestCheckout = !session?.access_token || !user;
-
-      // If we have a session but no access token, try to refresh
-      if (session && !session.access_token && user) {
+      } else if (session?.access_token) {
         try {
-          console.log('Attempting to refresh session...');
-          const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-          if (!refreshError && refreshData.session?.access_token) {
-            session = refreshData.session;
+          // Verify the session is still valid
+          const { data: { user }, error: userError } = await supabase.auth.getUser();
+          
+          if (userError) {
+            console.error('User validation error:', userError);
+            // Try to refresh the session
+            const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+            
+            if (!refreshError && refreshData.session) {
+              console.log('Successfully refreshed session');
+              validatedSession = refreshData.session;
+              isGuestCheckout = false;
+            } else {
+              console.error('Failed to refresh session:', refreshError);
+            }
+          } else if (user) {
+            console.log('User validated successfully:', {
+              id: user.id,
+              email: user.email
+            });
             isGuestCheckout = false;
-            console.log('Successfully refreshed session');
-          } else {
-            console.error('Failed to refresh session:', refreshError);
-            isGuestCheckout = true;
           }
         } catch (error) {
-          console.error('Error refreshing session:', error);
-          isGuestCheckout = true;
+          console.error('Error validating session:', error);
         }
       }
 
-      console.log(`Proceeding with ${isGuestCheckout ? 'guest' : 'authenticated'} checkout`, {
-        hasUser: !!user,
-        hasSession: !!session,
-        hasAccessToken: !!session?.access_token
+      console.log('Authentication status:', {
+        isGuestCheckout,
+        hasValidSession: !!validatedSession?.access_token,
+        hasUser: !!user
       });
 
       // Validate cart items before sending
@@ -167,12 +171,12 @@ const CartPageContent: React.FC = () => {
         'Content-Type': 'application/json'
       };
 
-      if (!isGuestCheckout && session?.access_token) {
-        headers.Authorization = `Bearer ${session.access_token}`;
+      if (!isGuestCheckout && validatedSession?.access_token) {
+        headers.Authorization = `Bearer ${validatedSession.access_token}`;
         console.log('Added authentication token to request');
       }
       
-      console.log('Sending checkout request...', {
+      console.log('Preparing checkout request:', {
         isGuestCheckout,
         hasAuthHeader: 'Authorization' in headers,
         itemCount: stripeItems.length
@@ -186,15 +190,33 @@ const CartPageContent: React.FC = () => {
         headers
       });
 
+      if (checkoutError) {
+        console.error('Checkout error:', checkoutError);
+        if (checkoutError.message?.includes('auth')) {
+          // If we get an auth error, try guest checkout
+          console.log('Auth error, retrying as guest...');
+          const { data: guestData, error: guestError } = await supabase.functions.invoke('create-checkout-session', {
+            body: { 
+              items: stripeItems,
+              isGuest: true
+            },
+            headers: { 'Content-Type': 'application/json' }
+          });
+
+          if (guestError) {
+            throw new Error(`Guest checkout failed: ${guestError.message}`);
+          }
+          data = guestData;
+        } else {
+          throw new Error(`Checkout failed: ${checkoutError.message}`);
+        }
+      }
+
       console.log('Received response:', { 
         success: !!data?.url,
         error: checkoutError,
         isGuestCheckout
       });
-
-      if (checkoutError) {
-        throw new Error(`Checkout failed: ${checkoutError.message}`);
-      }
 
       if (!data?.url) {
         throw new Error('Checkout failed: Could not retrieve payment session.');
