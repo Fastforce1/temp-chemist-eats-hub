@@ -79,22 +79,12 @@ const CartPageContent: React.FC = () => {
       
       if (sessionError) {
         console.error('Session error:', sessionError);
-        throw new Error(`Authentication error: ${sessionError.message}`);
+        console.log('Proceeding with guest checkout due to session error');
       }
 
       // For guest checkout, proceed without authentication
-      if (!session?.access_token && !user) {
-        console.log('Proceeding with guest checkout');
-      } else if (!session?.access_token) {
-        console.error('No valid session found');
-        // Try to refresh the session
-        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-        if (refreshError || !refreshData.session) {
-          console.error('Session refresh failed:', refreshError);
-          throw new Error('Your session has expired. Please log in again.');
-        }
-        session = refreshData.session;
-      }
+      const isGuestCheckout = !session?.access_token && !user;
+      console.log(`Proceeding with ${isGuestCheckout ? 'guest' : 'authenticated'} checkout`);
 
       // Validate cart items before sending
       const invalidItems = items.filter(item => {
@@ -148,27 +138,33 @@ const CartPageContent: React.FC = () => {
         }
       });
 
-      console.log('Sending checkout request to Supabase function...', {
-        items: stripeItems,
-        hasAuthToken: !!session?.access_token,
-        itemDetails: stripeItems.map(item => ({
-          priceId: item.priceId,
-          quantity: item.quantity
-        }))
+      console.log('Sending checkout request...', {
+        isGuestCheckout,
+        hasAuthHeader: !!session?.access_token,
+        itemCount: stripeItems.length
       });
-      
+
       // Prepare request headers
-      const headers: { Authorization?: string } = {};
-      if (session?.access_token) {
+      const headers: { Authorization?: string } = {
+        'Content-Type': 'application/json'
+      };
+      if (session?.access_token && !isGuestCheckout) {
         headers.Authorization = `Bearer ${session.access_token}`;
       }
       
       const { data, error: checkoutError } = await supabase.functions.invoke('create-checkout-session', {
-        body: { items: stripeItems },
+        body: { 
+          items: stripeItems,
+          isGuest: isGuestCheckout
+        },
         headers
       });
 
-      console.log('Received response:', { data, checkoutError });
+      console.log('Received response:', { 
+        success: !!data?.url,
+        error: checkoutError,
+        isGuestCheckout
+      });
 
       if (checkoutError) {
         throw new Error(`Checkout failed: ${checkoutError.message}`);

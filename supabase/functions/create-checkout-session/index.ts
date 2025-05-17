@@ -81,11 +81,12 @@ serve(async (req) => {
       apiVersion: "2022-11-15",
     });
 
-    let userId: string = crypto.randomUUID(); // Initialize with a guest ID by default
-    let customerId: string | undefined;
-
     // Handle authentication if available
     const authHeader = req.headers.get("Authorization");
+    let userId: string = crypto.randomUUID(); // Initialize with a guest ID by default
+    let customerId: string | undefined;
+    let isGuest = true;
+
     if (authHeader) {
       try {
         console.log("🔐 Processing authenticated checkout");
@@ -110,26 +111,27 @@ serve(async (req) => {
         
         if (userError) {
           console.error("❌ Auth error:", userError.message);
-          // Return 401 for authentication errors
-          return errorResponse(`Authentication failed: ${userError.message}`, 401);
-        }
-        
-        if (!userData?.user?.id) {
-          console.error("❌ No user ID in auth response");
-          return errorResponse("Invalid user authentication", 401);
-        }
-
-        userId = userData.user.id;
-        if (userData.user.email) {
-          // Create Stripe customer
-          console.log("🙋 Creating new Stripe customer...");
-          try {
-            const customer = await stripe.customers.create({ email: userData.user.email });
-            customerId = customer.id;
-            console.log("✅ Created Stripe customer:", customer.id);
-          } catch (error) {
-            console.error("❌ Error creating Stripe customer:", error);
-            // Continue without customer ID
+          // For guest checkout, continue with guest ID
+          console.log("⚠️ Auth failed, proceeding with guest checkout");
+        } else if (userData?.user?.id) {
+          userId = userData.user.id;
+          isGuest = false;
+          if (userData.user.email) {
+            // Create Stripe customer
+            console.log("🙋 Creating new Stripe customer...");
+            try {
+              const customer = await stripe.customers.create({ 
+                email: userData.user.email,
+                metadata: {
+                  supabase_uid: userData.user.id
+                }
+              });
+              customerId = customer.id;
+              console.log("✅ Created Stripe customer:", customer.id);
+            } catch (error) {
+              console.error("❌ Error creating Stripe customer:", error);
+              // Continue without customer ID
+            }
           }
         }
       } catch (error) {
@@ -194,7 +196,7 @@ serve(async (req) => {
       cancel_url: `${FRONTEND_URL}/cart`,
       metadata: {
         user_id: userId,
-        is_guest: !customerId
+        is_guest: isGuest
       }
     };
 
