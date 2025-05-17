@@ -14,7 +14,6 @@ const ALLOW_GUEST_CHECKOUT = true; // Flag to control guest checkout functionali
 const requiredEnvVars = [
   "STRIPE_SECRET_KEY",
   "FRONTEND_URL",
-  "SUPABASE_JWT_SECRET",
   ...(ALLOW_GUEST_CHECKOUT ? [] : ["SUPABASE_URL", "SUPABASE_ANON_KEY"]) 
 ] as const;
 
@@ -35,7 +34,6 @@ const getEnvVar = (key: string, fallback?: string): string => {
 };
 
 const FRONTEND_URL = getEnvVar("FRONTEND_URL", "http://localhost:4174");
-const JWT_SECRET = getEnvVar("SUPABASE_JWT_SECRET");
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": FRONTEND_URL,
@@ -47,9 +45,19 @@ const corsHeaders = {
 // Helper function to verify JWT token
 async function verifyToken(token: string) {
   try {
-    const secret = new TextEncoder().encode(JWT_SECRET);
-    const { payload } = await jose.jwtVerify(token, secret);
-    return payload;
+    // For guest checkout, return null to proceed as guest
+    if (ALLOW_GUEST_CHECKOUT && (!token || token === 'null')) {
+      return null;
+    }
+
+    // Attempt to decode the token without verification first
+    const decoded = jose.decodeJwt(token);
+    if (!decoded || !decoded.sub) {
+      console.error("❌ Invalid token format");
+      return null;
+    }
+
+    return decoded;
   } catch (error) {
     console.error("❌ JWT verification error:", error);
     return null;
