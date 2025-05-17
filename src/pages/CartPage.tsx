@@ -56,163 +56,84 @@ const CartPageContent: React.FC = () => {
 
   const handleCheckout = async () => {
     setIsLoading(true);
-    console.log('Starting checkout process...', {
-      itemCount,
-      total,
-      isAuthenticated: !!user,
-      userId: user?.id,
-      cartItems: items
-    });
+    setError(null);
 
     try {
+      console.log('Starting checkout process...', { items, user });
+
+      // Validate cart items
       if (!items || items.length === 0) {
-        throw new Error('Your cart is empty');
+        throw new Error('Cart is empty');
       }
 
-      // Get the current session and validate authentication
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
-      // Initialize checkout mode
-      let isGuestCheckout = true;
-      let validatedSession = null;
+      // Get authentication status
+      const { data: { session }, error: authError } = await supabase.auth.getSession();
+      console.log('Authentication status:', { session, error: authError });
 
-      if (sessionError) {
-        console.error('Session error:', sessionError);
-        console.log('Proceeding with guest checkout due to session error');
-      } else if (session?.access_token) {
-        try {
-          // Get a fresh session to ensure token is valid
-          const { data: { session: freshSession }, error: refreshError } = 
-            await supabase.auth.refreshSession();
-
-          if (refreshError) {
-            console.error('Session refresh error:', refreshError);
-            console.log('Proceeding with guest checkout');
-          } else if (freshSession?.access_token) {
-            console.log('Using fresh session token');
-            validatedSession = freshSession;
-            isGuestCheckout = false;
-          }
-        } catch (error) {
-          console.error('Error refreshing session:', error);
-          console.log('Proceeding with guest checkout');
-        }
-      }
-
-      console.log('Authentication status:', {
-        isGuestCheckout,
-        hasValidSession: !!validatedSession?.access_token
-      });
-
-      // Validate cart items before sending
-      const invalidItems = items.filter(item => {
-        const isValid = item?.supplement?.name && item?.quantity > 0;
-        if (!isValid) {
-          console.error('Invalid item found:', {
-            item,
-            hasSupplementObject: !!item?.supplement,
-            supplementName: item?.supplement?.name,
-            quantity: item?.quantity
-          });
-        }
-        return !isValid;
-      });
-
-      if (invalidItems.length > 0) {
-        console.error('Invalid cart items detected:', invalidItems);
-        throw new Error('Some items in your cart are invalid. Please try refreshing the page.');
-      }
-
-      // Map cart items to Stripe format with price IDs
+      // Prepare items for Stripe
       const stripeItems = items.map(item => {
-        try {
-          if (!item?.supplement?.name) {
-            throw new Error('Invalid item: missing supplement name');
-          }
-
-          console.log('Processing item for Stripe:', {
-            supplementName: item.supplement.name,
-            quantity: item.quantity
-          });
-          
-          const priceId = getStripePriceId(item.supplement.name);
-          if (!priceId) {
-            throw new Error(`No Stripe price ID found for ${item.supplement.name}`);
-          }
-
-          console.log('Got price ID:', {
-            supplementName: item.supplement.name,
-            priceId,
-            quantity: item.quantity
-          });
-          
-          return {
-            priceId,
-            quantity: item.quantity,
-          };
-        } catch (error) {
-          console.error('Error processing item for Stripe:', error);
-          throw error;
+        console.log('Processing item for Stripe:', item);
+        if (!item?.supplement?.priceId) {
+          throw new Error(`Missing Stripe price ID for ${item?.supplement?.name || 'unknown item'}`);
         }
+        console.log('Got price ID:', { priceId: item.supplement.priceId, quantity: item.quantity });
+        return {
+          priceId: item.supplement.priceId,
+          quantity: item.quantity || 1
+        };
       });
 
-      // Prepare request headers
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json'
-      };
+      // Determine if we should use guest checkout
+      const isGuestCheckout = !session?.access_token;
+      console.log('Preparing checkout request:', { isGuestCheckout, itemCount: stripeItems.length });
 
-      if (!isGuestCheckout && validatedSession?.access_token) {
-        headers.Authorization = `Bearer ${validatedSession.access_token}`;
-        console.log('Added authentication token to request');
-      }
-      
-      console.log('Preparing checkout request:', {
-        isGuestCheckout,
-        hasAuthHeader: 'Authorization' in headers,
-        itemCount: stripeItems.length
-      });
+      // Initialize response data
+      let checkoutData;
 
-      const { data, error: checkoutError } = await supabase.functions.invoke('create-checkout-session', {
-        body: { 
-          items: stripeItems,
-          isGuest: isGuestCheckout
-        },
-        headers
-      });
+      try {
+        // Try authenticated checkout first
+        const { data: authData, error: checkoutError } = await supabase.functions.invoke('create-checkout-session', {
+          body: { items: stripeItems }
+        });
 
-      if (checkoutError) {
-        console.error('Checkout error:', checkoutError);
-        // Always fall back to guest checkout on auth errors
-        if (checkoutError.message?.includes('auth') || checkoutError.message?.includes('claim')) {
-          console.log('Auth error, retrying as guest...');
-          const { data: guestData, error: guestError } = await supabase.functions.invoke('create-checkout-session', {
-            body: { 
-              items: stripeItems,
-              isGuest: true
+        if (checkoutError) {
+          console.log('Authenticated checkout failed, trying guest checkout:', checkoutError);
+          
+          if (isGuestCheckout) {
+            // Try guest checkout
+            const { data: guestData, error: guestError } = await supabase.functions.invoke('create-checkout-session', {
+              body: {
+                items: stripeItems,
+                isGuest: true
+              }
+            });
+
+            if (guestError) {
+              throw new Error(`Guest checkout failed: ${guestError.message}`);
             }
-          });
-
-          if (guestError) {
-            throw new Error(`Guest checkout failed: ${guestError.message}`);
+            checkoutData = guestData;
+          } else {
+            throw new Error(`Checkout failed: ${checkoutError.message}`);
           }
-          data = guestData;
         } else {
-          throw new Error(`Checkout failed: ${checkoutError.message}`);
+          checkoutData = authData;
         }
+      } catch (error) {
+        console.error('Checkout process failed:', error);
+        throw error;
       }
 
       console.log('Received response:', { 
-        success: !!data?.url,
-        error: checkoutError,
+        success: !!checkoutData?.url,
         isGuestCheckout
       });
 
-      if (!data?.url) {
+      if (!checkoutData?.url) {
         throw new Error('Checkout failed: Could not retrieve payment session.');
       }
 
-      console.log('Redirecting to Stripe checkout:', data.url);
-      window.location.href = data.url;
+      console.log('Redirecting to Stripe checkout:', checkoutData.url);
+      window.location.href = checkoutData.url;
     } catch (err) {
       console.error('Error during checkout:', err);
       const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';
