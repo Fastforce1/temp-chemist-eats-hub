@@ -162,7 +162,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         item.supplement.id === supplementId
           ? { ...item, quantity }
           : item
-      );
+    );
       console.log('Updated cart after quantity change:', newItems);
       return newItems;
     });

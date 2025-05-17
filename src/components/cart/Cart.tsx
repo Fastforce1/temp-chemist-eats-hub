@@ -4,6 +4,7 @@ import { useCart } from '../../contexts/CartContext';
 import { supabase } from '../../config/supabase';
 import { toast } from 'react-toastify';
 import { fetchStripeProducts, createCheckoutSession, type StripeProduct } from '../../lib/stripe';
+import { getStripePriceId } from '../../config/stripe-products';
 
 interface CartProps {
   isOpen: boolean;
@@ -13,23 +14,6 @@ interface CartProps {
 const Cart: React.FC<CartProps> = ({ isOpen, onClose }) => {
   const { items, removeFromCart, updateQuantity, total, itemCount, clearCart } = useCart();
   const [isLoading, setIsLoading] = useState(false);
-  const [stripeProducts, setStripeProducts] = useState<StripeProduct[]>([]);
-
-  useEffect(() => {
-    const loadStripeProducts = async () => {
-      try {
-        const products = await fetchStripeProducts();
-        setStripeProducts(products);
-      } catch (error) {
-        console.error('Error loading Stripe products:', error);
-        toast.error('Failed to load product information');
-      }
-    };
-
-    if (isOpen) {
-      loadStripeProducts();
-    }
-  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -44,21 +28,15 @@ const Cart: React.FC<CartProps> = ({ isOpen, onClose }) => {
     try {
       // Map cart items to Stripe price IDs
       const checkoutItems = items.map(item => {
-        const stripeProduct = stripeProducts.find(p => 
-          p.name.toLowerCase() === item.supplement.name.toLowerCase()
-        );
-        
-        if (!stripeProduct || stripeProduct.prices.length === 0) {
-          throw new Error(`No Stripe price found for ${item.supplement.name}`);
+        try {
+          const priceId = getStripePriceId(item.supplement.name);
+          return {
+            priceId,
+            quantity: item.quantity,
+          };
+        } catch (error) {
+          throw new Error(`Failed to get Stripe price for ${item.supplement.name}`);
         }
-
-        // Use the first price (assuming one price per product)
-        const priceId = stripeProduct.prices[0].id;
-
-        return {
-          priceId,
-          quantity: item.quantity,
-        };
       });
 
       await createCheckoutSession(checkoutItems);
@@ -70,81 +48,89 @@ const Cart: React.FC<CartProps> = ({ isOpen, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden">
-      <div className="absolute inset-0 bg-black bg-opacity-50" onClick={onClose} />
-      
-      <div className="absolute right-0 top-0 h-full w-full max-w-md">
-        <div className="flex h-full flex-col bg-white shadow-xl">
-          <div className="flex items-center justify-between px-4 py-6 sm:px-6">
-            <h2 className="text-lg font-medium text-gray-900 flex items-center">
-              <ShoppingCart className="h-6 w-6 mr-2" />
-              Shopping Cart ({itemCount} items)
-            </h2>
-            <button
-              type="button"
-              className="text-gray-400 hover:text-gray-500"
-              onClick={onClose}
-            >
-              <X className="h-6 w-6" />
-            </button>
-          </div>
-
-          {items.length === 0 ? (
-            <div className="flex-1 px-4 py-6 sm:px-6">
-              <p className="text-center text-gray-500">Your cart is empty</p>
-            </div>
-          ) : (
-            <>
+    <div className="fixed inset-0 overflow-hidden z-50">
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose} />
+        <div className="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10">
+          <div className="pointer-events-auto w-screen max-w-md">
+            <div className="flex h-full flex-col overflow-y-scroll bg-white shadow-xl">
               <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-6">
-                <div className="space-y-4">
-                  {items.map((item) => (
-                    <div
-                      key={item.supplement.id}
-                      className="flex items-center justify-between bg-white p-4 rounded-lg shadow-sm"
+                <div className="flex items-start justify-between">
+                  <h2 className="text-lg font-medium text-gray-900">Shopping Cart</h2>
+                  <div className="ml-3 flex h-7 items-center">
+                    <button
+                      type="button"
+                      className="-m-2 p-2 text-gray-400 hover:text-gray-500"
+                      onClick={onClose}
                     >
-                      <div className="flex items-center space-x-4">
-                        <img
-                          src={item.supplement.image || '/placeholder-supplement.jpg'}
-                          alt={item.supplement.name}
-                          className="h-16 w-16 rounded-md object-cover"
-                        />
-                        <div>
-                          <h3 className="text-sm font-medium text-gray-900">
-                            {item.supplement.name}
-                          </h3>
-                          <p className="text-sm text-gray-500">
-                            £{item.supplement.price.toFixed(2)} each
-                          </p>
-                        </div>
-                      </div>
+                      <span className="sr-only">Close panel</span>
+                      <X className="h-6 w-6" aria-hidden="true" />
+                    </button>
+                  </div>
+                </div>
 
-                      <div className="flex items-center space-x-4">
-                        <div className="flex items-center space-x-2">
-                          <button
-                            onClick={() => updateQuantity(item.supplement.id, item.quantity - 1)}
-                            className="p-1 text-gray-400 hover:text-gray-500 disabled:opacity-50"
-                            disabled={item.quantity <= 1}
-                          >
-                            <Minus className="h-4 w-4" />
-                          </button>
-                          <span className="text-gray-600">{item.quantity}</span>
-                          <button
-                            onClick={() => updateQuantity(item.supplement.id, item.quantity + 1)}
-                            className="p-1 text-gray-400 hover:text-gray-500"
-                          >
-                            <Plus className="h-4 w-4" />
-                          </button>
-                        </div>
-                        <button
-                          onClick={() => removeFromCart(item.supplement.id)}
-                          className="text-red-500 hover:text-red-600"
-                        >
-                          <X className="h-5 w-5" />
-                        </button>
+                {items.length === 0 ? (
+                  <div className="flex-1 px-4 py-6 sm:px-6">
+                    <p className="text-center text-gray-500">Your cart is empty</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="mt-8">
+                      <div className="flow-root">
+                        <ul role="list" className="-my-6 divide-y divide-gray-200">
+                          {items.map((item) => (
+                            <li key={item.supplement.id} className="flex py-6">
+                              <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-md border border-gray-200">
+                                <img
+                                  src={item.supplement.image || '/placeholder-supplement.jpg'}
+                                  alt={item.supplement.name}
+                                  className="h-full w-full object-cover object-center"
+                                />
+                              </div>
+
+                              <div className="ml-4 flex flex-1 flex-col">
+                                <div>
+                                  <div className="flex justify-between text-base font-medium text-gray-900">
+                                    <h3>{item.supplement.name}</h3>
+                                    <p className="ml-4">£{(item.supplement.price * item.quantity).toFixed(2)}</p>
+                                  </div>
+                                  <p className="mt-1 text-sm text-gray-500">{item.supplement.brand}</p>
+                                </div>
+                                <div className="flex flex-1 items-end justify-between text-sm">
+                                  <div className="flex items-center space-x-2">
+                                    <button
+                                      onClick={() => updateQuantity(item.supplement.id, Math.max(1, item.quantity - 1))}
+                                      className="p-1 text-gray-400 hover:text-gray-500"
+                                    >
+                                      <Minus className="h-4 w-4" />
+                                    </button>
+                                    <span className="text-gray-500">Qty {item.quantity}</span>
+                                    <button
+                                      onClick={() => updateQuantity(item.supplement.id, item.quantity + 1)}
+                                      className="p-1 text-gray-400 hover:text-gray-500"
+                                    >
+                                      <Plus className="h-4 w-4" />
+                                    </button>
+                                  </div>
+
+                                  <div className="flex">
+                                    <button
+                                      type="button"
+                                      onClick={() => removeFromCart(item.supplement.id)}
+                                      className="font-medium text-indigo-600 hover:text-indigo-500"
+                                    >
+                                      Remove
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
                       </div>
                     </div>
-                  ))}
-                </div>
+                  </>
+                )}
               </div>
 
               <div className="border-t border-gray-200 px-4 py-6 sm:px-6">
@@ -168,17 +154,17 @@ const Cart: React.FC<CartProps> = ({ isOpen, onClose }) => {
                   </button>
                 </div>
                 <div className="mt-4 text-center">
-                    <button
-                        onClick={clearCart}
-                        className="text-sm text-gray-500 hover:text-gray-700"
-                        disabled={items.length === 0}
-                    >
-                        Clear Cart
-                    </button>
+                  <button
+                    onClick={clearCart}
+                    className="text-sm text-gray-500 hover:text-gray-700"
+                    disabled={items.length === 0}
+                  >
+                    Clear Cart
+                  </button>
                 </div>
               </div>
-            </>
-          )}
+            </div>
+          </div>
         </div>
       </div>
     </div>

@@ -215,65 +215,65 @@ const Supplements: React.FC = () => {
         structuredData={productsStructuredData}
       />
 
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-semibold text-gray-900">Supplements</h1>
-          <div className="flex items-center space-x-4">
-            <button className="relative px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full" />
-            </button>
-            <button 
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-semibold text-gray-900">Supplements</h1>
+        <div className="flex items-center space-x-4">
+          <button className="relative px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg">
+            <Bell className="w-5 h-5" />
+            <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full" />
+          </button>
+          <button 
               onClick={() => navigate('/cart')}
-              className="relative px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
-            >
-              <ShoppingCart className="w-5 h-5" />
-              {itemCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-blue-600 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
-                  {itemCount}
-                </span>
-              )}
-            </button>
-          </div>
+            className="relative px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+          >
+            <ShoppingCart className="w-5 h-5" />
+            {itemCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-blue-600 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
+                {itemCount}
+              </span>
+            )}
+          </button>
         </div>
+      </div>
 
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-          <div className="border-b border-gray-200">
-            <div className="flex p-4">
-              <div className="flex-1">
-                <div className="flex space-x-4">
-                  {['all', 'recommended', 'current'].map((tab) => (
-                    <button
-                      key={tab}
-                      className={`px-4 py-2 text-sm font-medium rounded-lg ${
-                        activeTab === tab
-                          ? 'bg-blue-50 text-blue-700'
-                          : 'text-gray-500 hover:text-gray-700'
-                      }`}
-                      onClick={() => setActiveTab(tab as typeof activeTab)}
-                    >
-                      {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="flex items-center space-x-4">
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder="Search supplements..."
-                    className="w-64 pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                </div>
-                <button className="flex items-center text-gray-500 hover:text-gray-700">
-                  <Filter className="w-5 h-5 mr-2" />
-                  Filter
-                </button>
+      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div className="border-b border-gray-200">
+          <div className="flex p-4">
+            <div className="flex-1">
+              <div className="flex space-x-4">
+                {['all', 'recommended', 'current'].map((tab) => (
+                  <button
+                    key={tab}
+                    className={`px-4 py-2 text-sm font-medium rounded-lg ${
+                      activeTab === tab
+                        ? 'bg-blue-50 text-blue-700'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                    onClick={() => setActiveTab(tab as typeof activeTab)}
+                  >
+                    {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                  </button>
+                ))}
               </div>
             </div>
+            <div className="flex items-center space-x-4">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search supplements..."
+                  className="w-64 pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+              <button className="flex items-center text-gray-500 hover:text-gray-700">
+                <Filter className="w-5 h-5 mr-2" />
+                Filter
+              </button>
+            </div>
           </div>
+        </div>
 
           <div className="p-4">
             <div className="flex space-x-4 mb-4">
@@ -289,7 +289,7 @@ const Supplements: React.FC = () => {
                 >
                   {category.charAt(0).toUpperCase() + category.slice(1)}
                 </button>
-              ))}
+            ))}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
