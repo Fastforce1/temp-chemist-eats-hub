@@ -1,18 +1,17 @@
-import { createRoot, hydrateRoot } from 'react-dom/client';
+import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import './index.css';
 
-const root = document.getElementById("root")!;
+const root = document.getElementById("root");
+if (!root) {
+  throw new Error("Root element not found");
+}
+
 const app = (
   <BrowserRouter>
     <App />
   </BrowserRouter>
 );
 
-// Use hydration for SSR in production
-if (import.meta.env.PROD) {
-  hydrateRoot(root, app);
-} else {
-  createRoot(root).render(app);
-}
+createRoot(root).render(app);
