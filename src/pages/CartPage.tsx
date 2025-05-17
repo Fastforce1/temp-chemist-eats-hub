@@ -77,12 +77,23 @@ const CartPageContent: React.FC = () => {
         error: sessionError
       });
       
+      if (sessionError) {
+        console.error('Session error:', sessionError);
+        throw new Error(`Authentication error: ${sessionError.message}`);
+      }
+
       // For guest checkout, proceed without authentication
       if (!session?.access_token && !user) {
         console.log('Proceeding with guest checkout');
       } else if (!session?.access_token) {
         console.error('No valid session found');
-        throw new Error('Authentication error. Please try logging in again.');
+        // Try to refresh the session
+        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+        if (refreshError || !refreshData.session) {
+          console.error('Session refresh failed:', refreshError);
+          throw new Error('Your session has expired. Please log in again.');
+        }
+        session = refreshData.session;
       }
 
       // Validate cart items before sending

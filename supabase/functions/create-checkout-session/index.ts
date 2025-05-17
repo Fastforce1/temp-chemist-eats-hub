@@ -35,8 +35,16 @@ const getEnvVar = (key: string, fallback?: string): string => {
 // Set FRONTEND_URL with fallback for development
 const FRONTEND_URL = getEnvVar("FRONTEND_URL", "http://localhost:4174");
 
-// Helper function to send error responses
+const corsHeaders = {
+  "Access-Control-Allow-Origin": FRONTEND_URL,
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Credentials": "true"
+};
+
+// Helper function to send error responses with CORS headers
 const errorResponse = (message: string, status: number = 400) => {
+  console.error(`❌ Error: ${message}`);
   return new Response(
     JSON.stringify({ 
       error: message,
@@ -52,12 +60,6 @@ const errorResponse = (message: string, status: number = 400) => {
 
 console.log("🚀 Function deployed and ready!");
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
-
 serve(async (req) => {
   // Log incoming request details
   console.log(`📥 ${req.method} request to ${new URL(req.url).pathname}`);
@@ -65,6 +67,10 @@ serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
+  }
+
+  if (req.method !== "POST") {
+    return errorResponse("Method not allowed", 405);
   }
 
   try {
@@ -83,33 +89,47 @@ serve(async (req) => {
     if (authHeader) {
       try {
         console.log("🔐 Processing authenticated checkout");
+        // Validate Authorization header format
+        if (!authHeader.startsWith('Bearer ')) {
+          console.error("❌ Invalid Authorization header format");
+          return errorResponse("Invalid Authorization header format", 401);
+        }
+
         const supabaseClient = createClient(
           Deno.env.get("SUPABASE_URL")!,
           Deno.env.get("SUPABASE_ANON_KEY")!,
           {
-            global: { headers: { Authorization: authHeader } },
+            global: { 
+              headers: { Authorization: authHeader }
+            },
           }
         );
 
         console.log("🔐 Getting authenticated user...");
         const { data: userData, error: userError } = await supabaseClient.auth.getUser();
+        
         if (userError) {
           console.error("❌ Auth error:", userError.message);
-          // Don't return error, fall back to guest checkout
-          console.log("⚠️ Falling back to guest checkout");
-        } else if (userData?.user) {
-          userId = userData.user.id; // Override the guest ID with the authenticated user's ID
-          if (userData.user.email) {
-            // Create Stripe customer
-            console.log("🙋 Creating new Stripe customer...");
-            try {
-              const customer = await stripe.customers.create({ email: userData.user.email });
-              customerId = customer.id;
-              console.log("✅ Created Stripe customer:", customer.id);
-            } catch (error) {
-              console.error("❌ Error creating Stripe customer:", error);
-              // Continue without customer ID
-            }
+          // Return 401 for authentication errors
+          return errorResponse(`Authentication failed: ${userError.message}`, 401);
+        }
+        
+        if (!userData?.user?.id) {
+          console.error("❌ No user ID in auth response");
+          return errorResponse("Invalid user authentication", 401);
+        }
+
+        userId = userData.user.id;
+        if (userData.user.email) {
+          // Create Stripe customer
+          console.log("🙋 Creating new Stripe customer...");
+          try {
+            const customer = await stripe.customers.create({ email: userData.user.email });
+            customerId = customer.id;
+            console.log("✅ Created Stripe customer:", customer.id);
+          } catch (error) {
+            console.error("❌ Error creating Stripe customer:", error);
+            // Continue without customer ID
           }
         }
       } catch (error) {
@@ -216,6 +236,16 @@ serve(async (req) => {
       stack: error?.stack,
     });
 
-    return errorResponse(error?.message || "Internal Server Error", 500);
+    return new Response(
+      JSON.stringify({ 
+        error: error?.message || "Internal Server Error",
+        status: 500,
+        timestamp: new Date().toISOString()
+      }),
+      { 
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
+    );
   }
 });
