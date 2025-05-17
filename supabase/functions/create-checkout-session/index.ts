@@ -23,28 +23,28 @@ for (const envVar of requiredEnvVars) {
   }
 }
 
-// Helper function to get typed environment variables
-const getEnvVar = (key: typeof requiredEnvVars[number]): string => {
+// Helper function to get environment variables with fallback
+const getEnvVar = (key: string, fallback?: string): string => {
   const value = Deno.env.get(key);
-  if (!value) {
+  if (!value && !fallback) {
     throw new Error(`Missing required environment variable: ${key}`);
   }
-  return value;
+  return value || fallback || "";
 };
 
-// Set default FRONTEND_URL if not provided
-const FRONTEND_URL = getEnvVar("FRONTEND_URL");
+// Set FRONTEND_URL with fallback for development
+const FRONTEND_URL = getEnvVar("FRONTEND_URL", "http://localhost:4174");
 
-// Map our supplement IDs to Stripe Product IDs
-const PRODUCT_ID_MAP: Record<string, string> = {
-  '1': 'prod_creatine',      // 65 Creatine Capsules
-  '2': 'prod_collagen',      // 90 Bovine Collagen Capsules
-  '3': 'prod_magnesium',     // 90 Magnesium 3-in-1
-  '4': 'prod_vitaminc',      // 65 Vitamin C Orange Flavour
-  '5': 'prod_vitamind',      // 125 Vitamin D3 4000iu + K2
-  '6': 'prod_lionsmane',     // 65 Lions Mane + Black Pepper Extract
-  '7': 'prod_biotin',        // 125 Biotin Growth
-  '8': 'prod_collagenpowder' // Beauty Glow Bovine Collagen Peptides Protein Powder
+// Map our supplement IDs to Stripe Price IDs
+const PRICE_ID_MAP: Record<string, string> = {
+  '1': 'price_1RPEhmJXqLZs0wDX3RsfTtID',      // Creatine Capsules
+  '2': 'price_1RPGJrJXqLZs0wDXVxv7rwor',      // Bovine Collagen Capsules
+  '3': 'price_1RPGKpJXqLZs0wDXvOkPKZtE',      // Magnesium 3-in-1
+  '4': 'price_1RPGLfJXqLZs0wDXUGjTqXY0',      // Vitamin C Orange Flavour
+  '5': 'price_1RPGMiJXqLZs0wDXL9EXWXRg',      // Vitamin D3 4000iu + K2
+  '6': 'price_1RPGNlJXqLZs0wDX5FdyK90r',      // Lions Mane + Black Pepper Extract
+  '7': 'price_1RPGOHJXqLZs0wDXj86txcsB',      // Biotin Growth
+  '8': 'price_1RPGOzJXqLZs0wDXxgs4Fwlb'       // Beauty Glow Bovine Collagen Peptides Protein Powder
 };
 
 // Helper function to send error responses
@@ -145,17 +145,13 @@ serve(async (req) => {
     }
 
     const lineItems = cartItems.map((item: any) => {
-      const stripeProductId = PRODUCT_ID_MAP[item.supplement.id];
-      if (!stripeProductId) {
-        throw new Error(`No Stripe product found for supplement ID: ${item.supplement.id}`);
+      const stripePriceId = PRICE_ID_MAP[item.supplement.id];
+      if (!stripePriceId) {
+        throw new Error(`No Stripe price found for supplement ID: ${item.supplement.id}`);
       }
 
       return {
-        price_data: {
-          currency: "gbp",
-          product: stripeProductId,
-          unit_amount: Math.round(item.supplement.price * 100), // Convert to pence
-        },
+        price: stripePriceId,
         quantity: item.quantity,
       };
     });
