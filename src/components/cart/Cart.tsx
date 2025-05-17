@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ShoppingCart, Minus, Plus, X, Loader2 } from 'lucide-react';
 import { useCart } from '../../contexts/CartContext';
 import { supabase } from '../../config/supabase';
 import { toast } from 'react-toastify';
+import { fetchStripeProducts, createCheckoutSession, type StripeProduct } from '../../lib/stripe';
 
 interface CartProps {
   isOpen: boolean;
@@ -12,6 +13,23 @@ interface CartProps {
 const Cart: React.FC<CartProps> = ({ isOpen, onClose }) => {
   const { items, removeFromCart, updateQuantity, total, itemCount, clearCart } = useCart();
   const [isLoading, setIsLoading] = useState(false);
+  const [stripeProducts, setStripeProducts] = useState<StripeProduct[]>([]);
+
+  useEffect(() => {
+    const loadStripeProducts = async () => {
+      try {
+        const products = await fetchStripeProducts();
+        setStripeProducts(products);
+      } catch (error) {
+        console.error('Error loading Stripe products:', error);
+        toast.error('Failed to load product information');
+      }
+    };
+
+    if (isOpen) {
+      loadStripeProducts();
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -23,44 +41,27 @@ const Cart: React.FC<CartProps> = ({ isOpen, onClose }) => {
       return;
     }
 
-    // Get the current session
-    const { data: { session } } = await supabase.auth.getSession();
-
-    // Prepare items for the edge function
-    const cartDetails = {
-      items: items.map(item => ({
-        supplement: {
-          id: item.supplement.id,
-          name: item.supplement.name,
-          price: item.supplement.price,
-          image: item.supplement.image,
-        },
-        quantity: item.quantity,
-      })),
-    };
-
     try {
-      const { data, error } = await supabase.functions.invoke('create-checkout-session', {
-        body: cartDetails,
-        headers: session?.access_token ? {
-          Authorization: `Bearer ${session.access_token}`,
-        } : undefined,
+      // Map cart items to Stripe price IDs
+      const checkoutItems = items.map(item => {
+        const stripeProduct = stripeProducts.find(p => 
+          p.name.toLowerCase() === item.supplement.name.toLowerCase()
+        );
+        
+        if (!stripeProduct || stripeProduct.prices.length === 0) {
+          throw new Error(`No Stripe price found for ${item.supplement.name}`);
+        }
+
+        // Use the first price (assuming one price per product)
+        const priceId = stripeProduct.prices[0].id;
+
+        return {
+          priceId,
+          quantity: item.quantity,
+        };
       });
 
-      if (error) {
-        console.error("Error invoking create-checkout-session:", error);
-        toast.error(`Checkout failed: ${error.message}`);
-        setIsLoading(false);
-        return;
-      }
-
-      if (data && data.url) {
-        window.location.href = data.url; // Redirect to Stripe Checkout
-      } else {
-        console.error("No session URL returned from function:", data);
-        toast.error("Checkout failed: Could not retrieve payment session.");
-        setIsLoading(false);
-      }
+      await createCheckoutSession(checkoutItems);
     } catch (e: any) {
       console.error("Exception during checkout:", e);
       toast.error(`Checkout failed: ${e.message || "An unexpected error occurred."}`);

@@ -35,18 +35,6 @@ const getEnvVar = (key: string, fallback?: string): string => {
 // Set FRONTEND_URL with fallback for development
 const FRONTEND_URL = getEnvVar("FRONTEND_URL", "http://localhost:4174");
 
-// Map our supplement IDs to Stripe Price IDs
-const PRICE_ID_MAP: Record<string, string> = {
-  '1': 'price_1RPEhmJXqLZs0wDX3RsfTtID',      // Creatine Capsules
-  '2': 'price_1RPGJrJXqLZs0wDXVxv7rwor',      // Bovine Collagen Capsules
-  '3': 'price_1RPGKpJXqLZs0wDXvOkPKZtE',      // Magnesium 3-in-1
-  '4': 'price_1RPGLfJXqLZs0wDXUGjTqXY0',      // Vitamin C Orange Flavour
-  '5': 'price_1RPGMiJXqLZs0wDXL9EXWXRg',      // Vitamin D3 4000iu + K2
-  '6': 'price_1RPGNlJXqLZs0wDX5FdyK90r',      // Lions Mane + Black Pepper Extract
-  '7': 'price_1RPGOHJXqLZs0wDXj86txcsB',      // Biotin Growth
-  '8': 'price_1RPGOzJXqLZs0wDXxgs4Fwlb'       // Beauty Glow Bovine Collagen Peptides Protein Powder
-};
-
 // Helper function to send error responses
 const errorResponse = (message: string, status: number = 400) => {
   return new Response(
@@ -145,13 +133,12 @@ serve(async (req) => {
     }
 
     const lineItems = cartItems.map((item: any) => {
-      const stripePriceId = PRICE_ID_MAP[item.supplement.id];
-      if (!stripePriceId) {
-        throw new Error(`No Stripe price found for supplement ID: ${item.supplement.id}`);
+      if (!item.priceId) {
+        throw new Error(`No Stripe price ID provided for item`);
       }
 
       return {
-        price: stripePriceId,
+        price: item.priceId,
         quantity: item.quantity,
       };
     });
