@@ -79,12 +79,12 @@ const CartPageContent: React.FC = () => {
 
       // Validate cart items before sending
       const invalidItems = items.filter(item => {
-        const isValid = item?.supplement && item?.quantity > 0;
+        const isValid = item?.supplement?.name && item?.quantity > 0;
         if (!isValid) {
           console.error('Invalid item found:', {
             item,
             hasSupplementObject: !!item?.supplement,
-            supplementId: item?.supplement?.id,
+            supplementName: item?.supplement?.name,
             quantity: item?.quantity
           });
         }
@@ -101,14 +101,10 @@ const CartPageContent: React.FC = () => {
         try {
           console.log('Processing item for Stripe:', {
             item,
-            supplementName: item?.supplement?.name,
-            supplementId: item?.supplement?.id,
-            quantity: item?.quantity
+            supplementName: item.supplement.name,
+            supplementId: item.supplement.id,
+            quantity: item.quantity
           });
-          
-          if (!item?.supplement?.name) {
-            throw new Error('Invalid supplement: missing name');
-          }
           
           const priceId = getStripePriceId(item.supplement.name);
           console.log('Got price ID:', {

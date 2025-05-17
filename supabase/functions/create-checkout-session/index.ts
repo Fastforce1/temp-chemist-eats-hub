@@ -137,6 +137,8 @@ serve(async (req) => {
     
     // Validate each item has required properties
     for (const item of cartItems) {
+      console.log("Validating item:", item);
+      
       if (!item || typeof item !== 'object') {
         console.error("❌ Invalid item format:", item);
         return errorResponse("Invalid item format in cart");
@@ -153,11 +155,22 @@ serve(async (req) => {
       }
     }
 
-    // Map validated items to Stripe format
-    const lineItems = cartItems.map((item) => ({
-      price: item.priceId,
-      quantity: item.quantity,
-    }));
+    // Map validated items to Stripe format with additional error handling
+    const lineItems = cartItems.map((item) => {
+      try {
+        console.log("Processing item for Stripe:", item);
+        if (!item.priceId) {
+          throw new Error(`Missing price ID for item: ${JSON.stringify(item)}`);
+        }
+        return {
+          price: item.priceId,
+          quantity: item.quantity,
+        };
+      } catch (error) {
+        console.error("❌ Error processing item:", error, item);
+        throw error;
+      }
+    });
 
     console.log("💳 Creating Stripe checkout session with items:", lineItems);
     

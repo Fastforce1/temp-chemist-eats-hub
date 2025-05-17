@@ -46,6 +46,10 @@ const isValidSupplement = (supplement: any): supplement is Supplement => {
     price: supplement.price
   });
 
+  if (!hasValidName) {
+    console.error('Supplement is missing a valid name:', supplement);
+  }
+
   return hasValidId && hasValidName && hasValidPrice;
 };
 
