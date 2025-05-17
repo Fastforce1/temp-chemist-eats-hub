@@ -1,5 +1,7 @@
-// Use the Supabase project URL directly instead of environment variables
-const API_URL = `https://btrqtckxwvqkotnpyhgo.supabase.co/functions/v1/fatsecret`;
+import { EDGE_FUNCTION_URLS } from '../config/supabase';
+
+// Use the configured Edge Function URL
+const API_URL = EDGE_FUNCTION_URLS.fatsecret;
 
 /**
  * Make a request to the FatSecret API via Edge Function

@@ -1,9 +1,8 @@
-
 import React, { useState } from 'react';
 import { ShoppingCart, Minus, Plus, X, Loader2 } from 'lucide-react';
 import { useCart } from '../../contexts/CartContext';
-import { supabase } from '../../integrations/supabase/client'; // Import Supabase client
-import { toast } from 'react-toastify'; // For notifications
+import { supabase } from '../../config/supabase';
+import { toast } from 'react-toastify';
 
 interface CartProps {
   isOpen: boolean;
@@ -24,6 +23,9 @@ const Cart: React.FC<CartProps> = ({ isOpen, onClose }) => {
       return;
     }
 
+    // Get the current session
+    const { data: { session } } = await supabase.auth.getSession();
+
     // Prepare items for the edge function
     const cartDetails = {
       items: items.map(item => ({
@@ -31,7 +33,7 @@ const Cart: React.FC<CartProps> = ({ isOpen, onClose }) => {
           id: item.supplement.id,
           name: item.supplement.name,
           price: item.supplement.price,
-          image: item.supplement.image, // Pass image URL
+          image: item.supplement.image,
         },
         quantity: item.quantity,
       })),
@@ -40,6 +42,9 @@ const Cart: React.FC<CartProps> = ({ isOpen, onClose }) => {
     try {
       const { data, error } = await supabase.functions.invoke('create-checkout-session', {
         body: cartDetails,
+        headers: session?.access_token ? {
+          Authorization: `Bearer ${session.access_token}`,
+        } : undefined,
       });
 
       if (error) {
@@ -50,8 +55,6 @@ const Cart: React.FC<CartProps> = ({ isOpen, onClose }) => {
       }
 
       if (data && data.url) {
-        // Optionally clear cart after successful session creation, or wait until payment success confirmation
-        // clearCart(); // Example: clear cart now
         window.location.href = data.url; // Redirect to Stripe Checkout
       } else {
         console.error("No session URL returned from function:", data);
@@ -63,7 +66,6 @@ const Cart: React.FC<CartProps> = ({ isOpen, onClose }) => {
       toast.error(`Checkout failed: ${e.message || "An unexpected error occurred."}`);
       setIsLoading(false);
     }
-    // setIsLoading(false); // This might not be reached if redirection happens
   };
 
   return (
