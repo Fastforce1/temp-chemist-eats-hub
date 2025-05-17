@@ -83,8 +83,32 @@ const CartPageContent: React.FC = () => {
       }
 
       // For guest checkout, proceed without authentication
-      const isGuestCheckout = !session?.access_token && !user;
-      console.log(`Proceeding with ${isGuestCheckout ? 'guest' : 'authenticated'} checkout`);
+      let isGuestCheckout = !session?.access_token || !user;
+
+      // If we have a session but no access token, try to refresh
+      if (session && !session.access_token && user) {
+        try {
+          console.log('Attempting to refresh session...');
+          const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+          if (!refreshError && refreshData.session?.access_token) {
+            session = refreshData.session;
+            isGuestCheckout = false;
+            console.log('Successfully refreshed session');
+          } else {
+            console.error('Failed to refresh session:', refreshError);
+            isGuestCheckout = true;
+          }
+        } catch (error) {
+          console.error('Error refreshing session:', error);
+          isGuestCheckout = true;
+        }
+      }
+
+      console.log(`Proceeding with ${isGuestCheckout ? 'guest' : 'authenticated'} checkout`, {
+        hasUser: !!user,
+        hasSession: !!session,
+        hasAccessToken: !!session?.access_token
+      });
 
       // Validate cart items before sending
       const invalidItems = items.filter(item => {
@@ -138,20 +162,22 @@ const CartPageContent: React.FC = () => {
         }
       });
 
+      // Prepare request headers
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+
+      if (!isGuestCheckout && session?.access_token) {
+        headers.Authorization = `Bearer ${session.access_token}`;
+        console.log('Added authentication token to request');
+      }
+      
       console.log('Sending checkout request...', {
         isGuestCheckout,
-        hasAuthHeader: !!session?.access_token,
+        hasAuthHeader: 'Authorization' in headers,
         itemCount: stripeItems.length
       });
 
-      // Prepare request headers
-      const headers: { Authorization?: string } = {
-        'Content-Type': 'application/json'
-      };
-      if (session?.access_token && !isGuestCheckout) {
-        headers.Authorization = `Bearer ${session.access_token}`;
-      }
-      
       const { data, error: checkoutError } = await supabase.functions.invoke('create-checkout-session', {
         body: { 
           items: stripeItems,

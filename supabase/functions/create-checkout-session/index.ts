@@ -92,56 +92,78 @@ serve(async (req) => {
         console.log("🔐 Processing authenticated checkout");
         // Validate Authorization header format
         if (!authHeader.startsWith('Bearer ')) {
-          console.error("❌ Invalid Authorization header format");
-          return errorResponse("Invalid Authorization header format", 401);
-        }
+          console.log("❌ Invalid Authorization header format, proceeding as guest");
+          isGuest = true;
+        } else {
+          const supabaseClient = createClient(
+            Deno.env.get("SUPABASE_URL")!,
+            Deno.env.get("SUPABASE_ANON_KEY")!,
+            {
+              global: { 
+                headers: { Authorization: authHeader }
+              },
+            }
+          );
 
-        const supabaseClient = createClient(
-          Deno.env.get("SUPABASE_URL")!,
-          Deno.env.get("SUPABASE_ANON_KEY")!,
-          {
-            global: { 
-              headers: { Authorization: authHeader }
-            },
-          }
-        );
+          console.log("🔐 Getting authenticated user...");
+          const { data: { user: authUser }, error: userError } = await supabaseClient.auth.getUser();
+          
+          if (userError) {
+            console.error("❌ Auth error:", userError.message);
+            console.log("⚠️ Auth failed, proceeding with guest checkout");
+            isGuest = true;
+          } else if (!authUser?.id) {
+            console.error("❌ No user ID in auth response");
+            console.log("⚠️ No user ID, proceeding with guest checkout");
+            isGuest = true;
+          } else {
+            userId = authUser.id;
+            isGuest = false;
+            
+            if (authUser.email) {
+              try {
+                // Check if customer already exists
+                const existingCustomers = await stripe.customers.list({
+                  email: authUser.email,
+                  limit: 1
+                });
 
-        console.log("🔐 Getting authenticated user...");
-        const { data: userData, error: userError } = await supabaseClient.auth.getUser();
-        
-        if (userError) {
-          console.error("❌ Auth error:", userError.message);
-          // For guest checkout, continue with guest ID
-          console.log("⚠️ Auth failed, proceeding with guest checkout");
-        } else if (userData?.user?.id) {
-          userId = userData.user.id;
-          isGuest = false;
-          if (userData.user.email) {
-            // Create Stripe customer
-            console.log("🙋 Creating new Stripe customer...");
-            try {
-              const customer = await stripe.customers.create({ 
-                email: userData.user.email,
-                metadata: {
-                  supabase_uid: userData.user.id
+                if (existingCustomers.data.length > 0) {
+                  customerId = existingCustomers.data[0].id;
+                  console.log("✅ Found existing Stripe customer:", customerId);
+                } else {
+                  // Create new customer
+                  console.log("🙋 Creating new Stripe customer...");
+                  const customer = await stripe.customers.create({ 
+                    email: authUser.email,
+                    metadata: {
+                      supabase_uid: authUser.id
+                    }
+                  });
+                  customerId = customer.id;
+                  console.log("✅ Created new Stripe customer:", customer.id);
                 }
-              });
-              customerId = customer.id;
-              console.log("✅ Created Stripe customer:", customer.id);
-            } catch (error) {
-              console.error("❌ Error creating Stripe customer:", error);
-              // Continue without customer ID
+              } catch (error) {
+                console.error("❌ Error handling Stripe customer:", error);
+                // Continue without customer ID
+              }
             }
           }
         }
       } catch (error) {
         console.error("❌ Error processing authentication:", error);
-        // Continue as guest with the default guest ID
-        console.log("⚠️ Continuing as guest due to auth error");
+        console.log("⚠️ Auth error, proceeding with guest checkout");
+        isGuest = true;
       }
     } else {
-      console.log("👥 Processing as guest:", userId);
+      console.log("👥 No auth header, processing as guest:", userId);
     }
+
+    console.log("🔍 Checkout mode:", isGuest ? "Guest" : "Authenticated", {
+      userId,
+      hasCustomerId: !!customerId,
+      isGuest
+    });
 
     console.log("📦 Reading request body...");
     const body = await req.json();
