@@ -122,10 +122,11 @@ serve(async (req) => {
 
     console.log("📦 Reading request body...");
     const body = await req.json();
-    console.log("🛒 Cart body:", body);
+    console.log("🛒 Cart body:", JSON.stringify(body, null, 2));
 
     const cartItems = body.items;
     if (!cartItems || !Array.isArray(cartItems)) {
+      console.error("❌ Invalid cart structure:", cartItems);
       return errorResponse("Invalid cart structure. Expected array of items.");
     }
 
@@ -133,11 +134,11 @@ serve(async (req) => {
       return errorResponse("Cart is empty");
     }
 
-    console.log("🔍 Validating cart items:", cartItems);
+    console.log("🔍 Validating cart items:", JSON.stringify(cartItems, null, 2));
     
     // Validate each item has required properties
     for (const item of cartItems) {
-      console.log("Validating item:", item);
+      console.log("📝 Checking item:", JSON.stringify(item, null, 2));
       
       if (!item || typeof item !== 'object') {
         console.error("❌ Invalid item format:", item);
@@ -156,23 +157,28 @@ serve(async (req) => {
     }
 
     // Map validated items to Stripe format with additional error handling
-    const lineItems = cartItems.map((item) => {
+    const lineItems = cartItems.map((item, index) => {
       try {
-        console.log("Processing item for Stripe:", item);
+        console.log(`🔄 Processing item ${index}:`, JSON.stringify(item, null, 2));
+        
         if (!item.priceId) {
-          throw new Error(`Missing price ID for item: ${JSON.stringify(item)}`);
+          throw new Error(`Missing price ID for item at index ${index}`);
         }
-        return {
+
+        const lineItem = {
           price: item.priceId,
           quantity: item.quantity,
         };
+
+        console.log(`✅ Created line item ${index}:`, JSON.stringify(lineItem, null, 2));
+        return lineItem;
       } catch (error) {
-        console.error("❌ Error processing item:", error, item);
+        console.error(`❌ Error processing item ${index}:`, error);
         throw error;
       }
     });
 
-    console.log("💳 Creating Stripe checkout session with items:", lineItems);
+    console.log("💳 Creating Stripe checkout session with items:", JSON.stringify(lineItems, null, 2));
     
     // Prepare session data
     const sessionData: any = {

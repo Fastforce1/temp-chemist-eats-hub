@@ -141,7 +141,13 @@ const CartPageContent: React.FC = () => {
       
       console.log('Sending checkout request to Supabase function...', {
         items: stripeItems,
-        hasAuthToken: !!session?.access_token
+        hasAuthToken: !!session?.access_token,
+        itemDetails: stripeItems.map(item => ({
+          priceId: item.priceId,
+          quantity: item.quantity,
+          isValidPriceId: typeof item.priceId === 'string' && item.priceId.length > 0,
+          isValidQuantity: typeof item.quantity === 'number' && item.quantity > 0
+        }))
       });
       
       const { data, error: checkoutError } = await supabase.functions.invoke('create-checkout-session', {
