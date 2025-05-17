@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.131.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@12.1.0";
 import { config } from "https://deno.land/x/dotenv@v3.2.0/mod.ts";
+import * as jose from "https://deno.land/x/jose@v4.9.1/index.ts";
 
 // Load environment variables
 const env = config();
@@ -13,7 +14,8 @@ const ALLOW_GUEST_CHECKOUT = true; // Flag to control guest checkout functionali
 const requiredEnvVars = [
   "STRIPE_SECRET_KEY",
   "FRONTEND_URL",
-  ...(ALLOW_GUEST_CHECKOUT ? [] : ["SUPABASE_URL", "SUPABASE_ANON_KEY"]) // Only require Supabase env vars if guest checkout is disabled
+  "SUPABASE_JWT_SECRET",
+  ...(ALLOW_GUEST_CHECKOUT ? [] : ["SUPABASE_URL", "SUPABASE_ANON_KEY"]) 
 ] as const;
 
 for (const envVar of requiredEnvVars) {
@@ -32,8 +34,8 @@ const getEnvVar = (key: string, fallback?: string): string => {
   return value || fallback || "";
 };
 
-// Set FRONTEND_URL with fallback for development
 const FRONTEND_URL = getEnvVar("FRONTEND_URL", "http://localhost:4174");
+const JWT_SECRET = getEnvVar("SUPABASE_JWT_SECRET");
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": FRONTEND_URL,
@@ -41,6 +43,18 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Credentials": "true"
 };
+
+// Helper function to verify JWT token
+async function verifyToken(token: string) {
+  try {
+    const secret = new TextEncoder().encode(JWT_SECRET);
+    const { payload } = await jose.jwtVerify(token, secret);
+    return payload;
+  } catch (error) {
+    console.error("❌ JWT verification error:", error);
+    return null;
+  }
+}
 
 // Helper function to send error responses with CORS headers
 const errorResponse = (message: string, status: number = 400) => {
@@ -95,67 +109,29 @@ serve(async (req) => {
           console.log("❌ Invalid Authorization header format, proceeding as guest");
           isGuest = true;
         } else {
-          // Extract and validate the token
+          // Extract and verify the token
           const token = authHeader.split(' ')[1];
-          console.log("🔑 Validating token format...");
+          const payload = await verifyToken(token);
 
-          try {
-            // Basic JWT structure validation
-            const [header, payload, signature] = token.split('.');
-            if (!header || !payload || !signature) {
-              throw new Error('Invalid JWT format');
-            }
-
-            // Decode and check payload
-            const decodedPayload = JSON.parse(atob(payload));
-            console.log("📜 Token payload:", {
-              sub: decodedPayload.sub,
-              role: decodedPayload.role,
-              exp: decodedPayload.exp,
-              aud: decodedPayload.aud
+          if (!payload) {
+            console.log("❌ Invalid token, proceeding as guest");
+            isGuest = true;
+          } else {
+            console.log("✅ Token verified:", {
+              sub: payload.sub,
+              role: payload.role,
+              email: payload.email
             });
 
-            if (!decodedPayload.sub) {
-              throw new Error('Missing sub claim');
-            }
-
-            // Initialize Supabase client with validated token
-            const supabaseClient = createClient(
-              Deno.env.get("SUPABASE_URL")!,
-              Deno.env.get("SUPABASE_ANON_KEY")!,
-              {
-                global: { 
-                  headers: { Authorization: authHeader }
-                },
-                auth: {
-                  persistSession: false
-                }
-              }
-            );
-
-            console.log("🔐 Getting authenticated user...");
-            const { data: { user: authUser }, error: userError } = await supabaseClient.auth.getUser();
-            
-            if (userError) {
-              console.error("❌ Auth error:", userError.message);
-              throw new Error(userError.message);
-            }
-
-            if (!authUser?.id) {
-              console.error("❌ No user ID in auth response");
-              throw new Error('Invalid user authentication');
-            }
-
-            // Successfully authenticated
-            userId = authUser.id;
+            // Use the verified user ID
+            userId = payload.sub as string;
             isGuest = false;
-            console.log("✅ Authentication successful:", { userId });
-            
-            if (authUser.email) {
+
+            // Create or retrieve Stripe customer
+            if (payload.email) {
               try {
-                // Check if customer already exists
                 const existingCustomers = await stripe.customers.list({
-                  email: authUser.email,
+                  email: payload.email as string,
                   limit: 1
                 });
 
@@ -163,12 +139,11 @@ serve(async (req) => {
                   customerId = existingCustomers.data[0].id;
                   console.log("✅ Found existing Stripe customer:", customerId);
                 } else {
-                  // Create new customer
                   console.log("🙋 Creating new Stripe customer...");
                   const customer = await stripe.customers.create({ 
-                    email: authUser.email,
+                    email: payload.email as string,
                     metadata: {
-                      supabase_uid: authUser.id
+                      supabase_uid: userId
                     }
                   });
                   customerId = customer.id;
@@ -179,10 +154,6 @@ serve(async (req) => {
                 // Continue without customer ID
               }
             }
-          } catch (tokenError) {
-            console.error("❌ Token validation error:", tokenError.message);
-            console.log("⚠️ Invalid token, proceeding with guest checkout");
-            isGuest = true;
           }
         }
       } catch (error) {

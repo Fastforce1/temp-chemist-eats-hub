@@ -74,44 +74,34 @@ const CartPageContent: React.FC = () => {
       
       // Initialize checkout mode
       let isGuestCheckout = true;
-      let validatedSession = session;
+      let validatedSession = null;
 
       if (sessionError) {
         console.error('Session error:', sessionError);
         console.log('Proceeding with guest checkout due to session error');
       } else if (session?.access_token) {
         try {
-          // Verify the session is still valid
-          const { data: { user }, error: userError } = await supabase.auth.getUser();
-          
-          if (userError) {
-            console.error('User validation error:', userError);
-            // Try to refresh the session
-            const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-            
-            if (!refreshError && refreshData.session) {
-              console.log('Successfully refreshed session');
-              validatedSession = refreshData.session;
-              isGuestCheckout = false;
-            } else {
-              console.error('Failed to refresh session:', refreshError);
-            }
-          } else if (user) {
-            console.log('User validated successfully:', {
-              id: user.id,
-              email: user.email
-            });
+          // Get a fresh session to ensure token is valid
+          const { data: { session: freshSession }, error: refreshError } = 
+            await supabase.auth.refreshSession();
+
+          if (refreshError) {
+            console.error('Session refresh error:', refreshError);
+            console.log('Proceeding with guest checkout');
+          } else if (freshSession?.access_token) {
+            console.log('Using fresh session token');
+            validatedSession = freshSession;
             isGuestCheckout = false;
           }
         } catch (error) {
-          console.error('Error validating session:', error);
+          console.error('Error refreshing session:', error);
+          console.log('Proceeding with guest checkout');
         }
       }
 
       console.log('Authentication status:', {
         isGuestCheckout,
-        hasValidSession: !!validatedSession?.access_token,
-        hasUser: !!user
+        hasValidSession: !!validatedSession?.access_token
       });
 
       // Validate cart items before sending
@@ -192,15 +182,14 @@ const CartPageContent: React.FC = () => {
 
       if (checkoutError) {
         console.error('Checkout error:', checkoutError);
-        if (checkoutError.message?.includes('auth')) {
-          // If we get an auth error, try guest checkout
+        // Always fall back to guest checkout on auth errors
+        if (checkoutError.message?.includes('auth') || checkoutError.message?.includes('claim')) {
           console.log('Auth error, retrying as guest...');
           const { data: guestData, error: guestError } = await supabase.functions.invoke('create-checkout-session', {
             body: { 
               items: stripeItems,
               isGuest: true
-            },
-            headers: { 'Content-Type': 'application/json' }
+            }
           });
 
           if (guestError) {
